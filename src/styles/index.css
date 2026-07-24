@@ -2,6 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =============================================================
+   Fundação de tokens do redesign (docs/PROMPT-UI.md §3, §7, §9.1)
+   Superfícies semânticas, sombras empilhadas, movimento e foco.
+   ============================================================= */
+:root {
+  /* Superfícies em elevação (claro) */
+  --sup-base: #ffffff;
+  --sup-elevada-1: #f8f9fb;
+  --sup-elevada-2: #eef0f4;
+  --sup-flutuante: #ffffff;
+
+  /* Sombras empilhadas: contato + ambiente (claro) */
+  --shadow-suave: 0 1px 2px rgb(0 0 0 / 0.04), 0 2px 6px -1px rgb(0 0 0 / 0.06);
+  --shadow-painel: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px -6px rgb(0 0 0 / 0.12);
+  --shadow-flutuante: 0 2px 4px rgb(0 0 0 / 0.08), 0 16px 48px -12px rgb(0 0 0 / 0.24);
+
+  /* Tokens de movimento (curvas + durações) */
+  --facil-saida: cubic-bezier(0.22, 1, 0.36, 1);
+  --facil-padrao: cubic-bezier(0.4, 0, 0.2, 1);
+  --facil-brusco: cubic-bezier(0.4, 0, 1, 1);
+  --dur-micro: 120ms;
+  --dur-curta: 180ms;
+  --dur-media: 240ms;
+  --dur-longa: 320ms;
+
+  /* Anel de foco (duplo offset: vão claro + acento) */
+  --anel-gap: #ffffff;
+  --anel-cor: #7c4dff;
+  --anel-foco: 0 0 0 2px var(--anel-gap), 0 0 0 4px var(--anel-cor);
+}
+
+.dark {
+  --sup-base: #121419;
+  --sup-elevada-1: #181b21;
+  --sup-elevada-2: #1e222a;
+  --sup-flutuante: #252932;
+
+  /* No escuro a sombra some no fundo 950: reforça preto + hairline interno */
+  --shadow-suave: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 6px -1px rgb(0 0 0 / 0.4);
+  --shadow-painel: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -6px rgb(0 0 0 / 0.5),
+    inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  --shadow-flutuante: 0 2px 4px rgb(0 0 0 / 0.5), 0 16px 48px -12px rgb(0 0 0 / 0.6),
+    inset 0 0 0 1px rgb(255 255 255 / 0.08);
+
+  --anel-gap: #181b21;
+  --anel-cor: #9475ff;
+}
+
 /* Estilos globais do DesignStudio Pro */
 html,
 body,
@@ -10,8 +58,34 @@ body,
 }
 
 body {
-  @apply bg-superficie-100 font-sans text-superficie-900 antialiased;
+  @apply bg-superficie-100 font-sans text-superficie-900;
   overscroll-behavior: none;
+  /* Inter afinada — recursos estilísticos + suavização só no escuro */
+  font-feature-settings: 'cv05', 'cv08', 'ss03';
+}
+.dark body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Foco visível premium (só teclado) para elementos interativos.
+   `outline` transparente preserva o anel em forced-colors (alto contraste). */
+:where(button, a, input, select, textarea, [tabindex], [role='button']):focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: var(--anel-foco);
+  border-radius: 0.5rem;
+}
+
+/* Reduz movimento: preserva informação, corta translação/scale/spring */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 120ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Barra de rolagem discreta nos painéis */
@@ -29,19 +103,36 @@ body {
   background: transparent;
 }
 
-/* Botões utilitários do design system */
+/* Botões e campos — estados como sistema (§3.4). Transição explícita
+   (nunca `transition: all`); foco pelo :focus-visible global. */
 @layer components {
   .botao-primario {
-    @apply rounded-lg bg-primaria-500 px-4 py-2 text-sm font-semibold text-white shadow-suave transition hover:bg-primaria-600 active:scale-[0.98];
+    @apply rounded-lg bg-primaria-500 px-4 py-2 text-sm font-semibold text-white
+      shadow-[0_4px_16px_-4px_rgb(124_77_255/0.45)]
+      transition-[background-color,transform,box-shadow] duration-micro ease-facil-padrao
+      hover:-translate-y-px hover:bg-primaria-600 hover:shadow-[0_8px_24px_-6px_rgb(124_77_255/0.55)]
+      active:translate-y-0 active:scale-[0.97]
+      disabled:pointer-events-none disabled:opacity-40 disabled:saturate-50;
   }
   .botao-secundario {
-    @apply rounded-lg bg-superficie-100 px-4 py-2 text-sm font-medium text-superficie-900 transition hover:bg-superficie-200 dark:bg-superficie-800 dark:text-superficie-100 dark:hover:bg-superficie-700;
+    @apply rounded-lg bg-superficie-100 px-4 py-2 text-sm font-medium text-superficie-900
+      transition-[background-color,transform,box-shadow] duration-micro ease-facil-padrao
+      hover:bg-superficie-200 active:scale-[0.98]
+      disabled:pointer-events-none disabled:opacity-40
+      dark:bg-superficie-800 dark:text-superficie-100 dark:hover:bg-superficie-700;
   }
   .botao-icone {
-    @apply flex h-9 w-9 items-center justify-center rounded-lg text-superficie-700 transition hover:bg-superficie-100 disabled:opacity-30 disabled:hover:bg-transparent dark:text-superficie-200 dark:hover:bg-superficie-700;
+    @apply flex h-9 w-9 items-center justify-center rounded-lg text-superficie-700
+      transition-[background-color,transform] duration-micro ease-facil-padrao
+      hover:bg-primaria-500/10 active:scale-95
+      disabled:opacity-30 disabled:hover:bg-transparent
+      dark:text-superficie-200 dark:hover:bg-primaria-500/20;
   }
   .campo-texto {
-    @apply w-full rounded-lg border border-superficie-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-primaria-400 focus:ring-2 focus:ring-primaria-100 dark:border-superficie-700 dark:bg-superficie-800 dark:text-superficie-100 dark:focus:ring-primaria-900;
+    @apply w-full rounded-lg border border-superficie-200 bg-white px-3 py-2 text-sm text-superficie-900
+      outline-none transition-[border-color] duration-micro ease-facil-padrao
+      placeholder:text-superficie-500 focus:border-primaria-400
+      dark:border-superficie-700 dark:bg-superficie-800 dark:text-superficie-100;
   }
   .rotulo-campo {
     @apply mb-1 block text-xs font-medium text-superficie-700 dark:text-superficie-200;
