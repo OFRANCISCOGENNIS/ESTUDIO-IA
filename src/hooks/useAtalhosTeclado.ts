@@ -117,6 +117,9 @@ export function useAtalhosTeclado() {
         case 'l':
           estado.definirFerramenta('linha')
           break
+        case 'p':
+          estado.definirFerramenta('caneta')
+          break
       }
     }
 

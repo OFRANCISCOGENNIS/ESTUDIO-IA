@@ -194,6 +194,8 @@ function normalizarElemento(bruto: Record<string, unknown>): Elemento | null {
         largura: numeroOu(bruto.largura, 300),
         alturaLinha: numeroOu(bruto.alturaLinha, 1.2),
         espacamentoLetras: numeroOu(bruto.espacamentoLetras, 0),
+        efeito: EFEITOS_TEXTO.includes(bruto.efeito as string) ? (bruto.efeito as never) : 'nenhum',
+        textura: TEXTURAS_TEXTO.includes(bruto.textura as string) ? (bruto.textura as never) : 'nenhuma',
       }
     case 'imagem':
       return {
@@ -219,10 +221,60 @@ function normalizarElemento(bruto: Record<string, unknown>): Elemento | null {
         espessura: numeroOu(bruto.espessura, 4),
         tracejada: bruto.tracejada === true,
       }
+    case 'caminho':
+      return {
+        ...base,
+        tipo,
+        pontos: Array.isArray(bruto.pontos) && bruto.pontos.length >= 4
+          ? (bruto.pontos as number[])
+          : [0, 0, 100, 0],
+        fechado: bruto.fechado === true,
+        tensao: numeroOu(bruto.tensao, 0),
+        preenchimento: textoOu(bruto.preenchimento, 'transparent'),
+        corBorda: textoOu(bruto.corBorda, '#7c4dff'),
+        espessuraBorda: numeroOu(bruto.espessuraBorda, 3),
+      }
+    case 'grafico':
+      return {
+        ...base,
+        tipo,
+        tipoGrafico: ['barras', 'pizza', 'linhas', 'funil'].includes(bruto.tipoGrafico as string)
+          ? (bruto.tipoGrafico as never)
+          : 'barras',
+        dados: Array.isArray(bruto.dados)
+          ? bruto.dados
+              .map((d) => d as Record<string, unknown>)
+              .map((d) => ({ rotulo: textoOu(d.rotulo, ''), valor: numeroOu(d.valor, 0) }))
+          : [],
+        cores: Array.isArray(bruto.cores) ? (bruto.cores as string[]) : ['#7c4dff'],
+        largura: numeroOu(bruto.largura, 400),
+        altura: numeroOu(bruto.altura, 300),
+        mostrarValores: bruto.mostrarValores !== false,
+        corTexto: textoOu(bruto.corTexto, '#1f2937'),
+      }
+    case 'tabela':
+      return {
+        ...base,
+        tipo,
+        celulas: Array.isArray(bruto.celulas)
+          ? (bruto.celulas as unknown[]).map((linha) =>
+              Array.isArray(linha) ? linha.map((c) => textoOu(c, '')) : [],
+            )
+          : [['A', 'B'], ['1', '2']],
+        largura: numeroOu(bruto.largura, 400),
+        altura: numeroOu(bruto.altura, 200),
+        corCabecalho: textoOu(bruto.corCabecalho, '#7c4dff'),
+        corCabecalhoTexto: textoOu(bruto.corCabecalhoTexto, '#ffffff'),
+        corTexto: textoOu(bruto.corTexto, '#1f2937'),
+        corLinha: textoOu(bruto.corLinha, '#e5e7eb'),
+      }
     default:
       return null
   }
 }
+
+const EFEITOS_TEXTO = ['nenhum', 'sombra', 'contorno', 'neon', 'eco']
+const TEXTURAS_TEXTO = ['nenhuma', 'dourado', 'prata', 'metal', 'fogo', 'gelo']
 
 const MODOS_MISTURA: ModoMistura[] = [
   'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten',

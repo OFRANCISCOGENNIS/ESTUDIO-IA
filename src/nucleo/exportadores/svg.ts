@@ -109,6 +109,14 @@ export function paginaParaSvg(pagina: Pagina, largura: number, altura: number): 
         interno = `<polyline points="${pts.join(' ')}" fill="none" stroke="${escaparAtributo(el.cor)}" stroke-width="${n(el.espessura)}" stroke-linecap="round"${traco}/>`
         break
       }
+      case 'caminho': {
+        const pts: string[] = []
+        for (let i = 0; i + 1 < el.pontos.length; i += 2) pts.push(`${n(el.pontos[i])},${n(el.pontos[i + 1])}`)
+        const preenche = el.fechado && el.preenchimento !== 'transparent' ? escaparAtributo(el.preenchimento) : 'none'
+        const tag = el.fechado ? 'polygon' : 'polyline'
+        interno = `<${tag} points="${pts.join(' ')}" fill="${preenche}" stroke="${escaparAtributo(el.corBorda)}" stroke-width="${n(el.espessuraBorda)}" stroke-linecap="round" stroke-linejoin="round"/>`
+        break
+      }
       case 'texto': {
         const ancora = el.alinhamento === 'center' ? 'middle' : el.alinhamento === 'right' ? 'end' : 'start'
         const xAncora = el.alinhamento === 'center' ? el.largura / 2 : el.alinhamento === 'right' ? el.largura : 0

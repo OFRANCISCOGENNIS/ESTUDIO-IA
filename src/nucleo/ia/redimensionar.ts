@@ -14,7 +14,8 @@ import { Elemento } from '../../tipos/projeto'
 /** Dimensões (sem rotação) de um elemento, para posicionamento */
 function dimensoes(elemento: Elemento): { largura: number; altura: number } {
   switch (elemento.tipo) {
-    case 'linha': {
+    case 'linha':
+    case 'caminho': {
       const xs = elemento.pontos.filter((_, i) => i % 2 === 0)
       const ys = elemento.pontos.filter((_, i) => i % 2 === 1)
       return {
@@ -44,12 +45,25 @@ function escalar(elemento: Elemento, s: number): Elemento {
         pontos: elemento.pontos.map((p) => p * s),
         espessura: Math.max(1, elemento.espessura * s),
       }
+    case 'caminho':
+      return {
+        ...elemento,
+        pontos: elemento.pontos.map((p) => p * s),
+        espessuraBorda: elemento.espessuraBorda * s,
+      }
     case 'imagem':
       return {
         ...elemento,
         largura: Math.max(1, elemento.largura * s),
         altura: Math.max(1, elemento.altura * s),
         raioCanto: elemento.raioCanto * s,
+      }
+    case 'grafico':
+    case 'tabela':
+      return {
+        ...elemento,
+        largura: Math.max(1, elemento.largura * s),
+        altura: Math.max(1, elemento.altura * s),
       }
     default:
       return {

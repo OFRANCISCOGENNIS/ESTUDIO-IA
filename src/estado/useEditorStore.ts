@@ -143,7 +143,7 @@ function clonarElementosParaPagina(elementos: Elemento[]): Elemento[] {
 
 /** Dimensões dos elementos para alinhamento */
 function dimensoesDe(elemento: Elemento): { largura: number; altura: number } {
-  if (elemento.tipo === 'linha') {
+  if (elemento.tipo === 'linha' || elemento.tipo === 'caminho') {
     const xs = elemento.pontos.filter((_, i) => i % 2 === 0)
     const ys = elemento.pontos.filter((_, i) => i % 2 === 1)
     return {

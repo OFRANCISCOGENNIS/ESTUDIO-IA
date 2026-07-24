@@ -8,7 +8,7 @@
 import { useState, type ChangeEvent } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { useProjetosStore } from '../../estado/useProjetosStore'
-import { criarForma, criarImagem, criarLinha, criarTexto } from '../../nucleo/elementos'
+import { criarForma, criarGrafico, criarImagem, criarLinha, criarTabela, criarTexto } from '../../nucleo/elementos'
 import { TEMPLATES } from '../../dados/templates'
 import { PARES_FONTES, ParFonte } from '../../dados/fontes'
 import { FOTOS, ICONES, ItemGaleria, STICKERS } from '../../dados/galeria'
@@ -18,6 +18,7 @@ import { PainelIA } from './PainelIA'
 import { PainelMarca } from './PainelMarca'
 import { PainelColab } from './PainelColab'
 import { PainelTime } from './PainelTime'
+import { listarPlugins } from '../../nucleo/plugins/registro'
 
 /** Identificadores das abas da trilha lateral */
 type Aba =
@@ -59,6 +60,7 @@ const classeBotaoBloco =
 export function BarraFerramentas() {
   const projeto = useEditorStore((s) => s.projeto)
   const adicionarElemento = useEditorStore((s) => s.adicionarElemento)
+  const definirFerramenta = useEditorStore((s) => s.definirFerramenta)
   const aplicarTemplate = useEditorStore((s) => s.aplicarTemplate)
   const abrirProjeto = useEditorStore((s) => s.abrirProjeto)
   const resumos = useProjetosStore((s) => s.resumos)
@@ -235,6 +237,40 @@ export function BarraFerramentas() {
                 >
                   <span className="text-2xl leading-none text-primaria-500">➖</span>
                   <span>Linha</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h3 className={classeRotuloSecao}>Vetor e dados</h3>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => definirFerramenta('caneta')}
+                  className={classeBotaoBloco}
+                  title="Caneta vetorial (P) — clique para criar pontos, Enter/duplo clique finaliza"
+                >
+                  <span className="text-2xl leading-none text-primaria-500">✒️</span>
+                  <span>Caneta</span>
+                </button>
+                <button
+                  onClick={() =>
+                    adicionarElemento(criarGrafico(centrarX(480), centrarY(320)))
+                  }
+                  className={classeBotaoBloco}
+                  title="Gráfico"
+                >
+                  <span className="text-2xl leading-none text-primaria-500">📊</span>
+                  <span>Gráfico</span>
+                </button>
+                <button
+                  onClick={() =>
+                    adicionarElemento(criarTabela(centrarX(520), centrarY(180)))
+                  }
+                  className={classeBotaoBloco}
+                  title="Tabela"
+                >
+                  <span className="text-2xl leading-none text-primaria-500">▦</span>
+                  <span>Tabela</span>
                 </button>
               </div>
             </div>
@@ -453,11 +489,28 @@ export function BarraFerramentas() {
 
       case 'Apps':
         return (
-          <div className="flex h-full flex-col items-center justify-center gap-2 py-16 text-center">
-            <span className="text-3xl">🧩</span>
-            <p className="text-sm font-medium text-superficie-700 dark:text-superficie-300">
-              Mais ferramentas em breve 🧩
+          <div className="space-y-3">
+            <h3 className={classeRotuloSecao}>Apps e extensões</h3>
+            <p className="text-xs text-superficie-600 dark:text-superficie-400">
+              Plugins registrados via arquitetura de extensões.
             </p>
+            {listarPlugins().map((plugin) => (
+              <button
+                key={plugin.id}
+                onClick={plugin.executar}
+                className="flex w-full items-center gap-3 rounded-xl2 border border-superficie-200 bg-white p-3 text-left shadow-suave transition hover:-translate-y-0.5 hover:border-primaria-300 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900"
+              >
+                <span className="text-2xl">{plugin.icone}</span>
+                <span>
+                  <span className="block text-sm font-semibold text-superficie-900 dark:text-superficie-100">
+                    {plugin.nome}
+                  </span>
+                  <span className="block text-xs text-superficie-600 dark:text-superficie-400">
+                    {plugin.descricao}
+                  </span>
+                </span>
+              </button>
+            ))}
           </div>
         )
     }

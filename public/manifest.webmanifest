@@ -1,0 +1,13 @@
+{
+  "name": "DesignStudio Pro",
+  "short_name": "DesignStudio",
+  "description": "Estúdio de design tudo-em-um no navegador",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#181b21",
+  "theme_color": "#7c4dff",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

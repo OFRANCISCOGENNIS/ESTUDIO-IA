@@ -11,7 +11,7 @@
 import Konva from 'konva'
 import type { Context } from 'konva/lib/Context'
 import { Filter, KonvaEventObject } from 'konva/lib/Node'
-import { useCallback, useEffect, useRef } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef } from 'react'
 import {
   Ellipse,
   Group,
@@ -20,6 +20,7 @@ import {
   Rect,
   Star,
   Text,
+  Wedge,
 } from 'react-konva'
 import {
   filtroAjustesDSP,
@@ -87,6 +88,7 @@ export function ElementoKonva({
           })
           break
         case 'linha':
+        case 'caminho':
           aoAlterar(elemento.id, {
             ...base,
             pontos: elemento.pontos.map((valor, i) =>
@@ -195,26 +197,27 @@ function FormaInterna({
           dash={elemento.tracejada ? [elemento.espessura * 3, elemento.espessura * 2] : undefined}
         />
       )
-    case 'texto':
+    case 'caminho':
       return (
-        <Text
-          text={elemento.texto}
-          width={elemento.largura}
-          fontSize={elemento.tamanhoFonte}
-          fontFamily={elemento.fonte}
-          fontStyle={estiloFonte(elemento.negrito, elemento.italico)}
-          textDecoration={elemento.sublinhado ? 'underline' : ''}
-          fill={elemento.cor}
-          align={elemento.alinhamento}
-          lineHeight={elemento.alturaLinha}
-          letterSpacing={elemento.espacamentoLetras}
-          visible={!emEdicao}
-          onDblClick={() => aoEditarTexto(elemento.id)}
-          onDblTap={() => aoEditarTexto(elemento.id)}
+        <Line
+          points={elemento.pontos}
+          closed={elemento.fechado}
+          tension={elemento.tensao}
+          fill={elemento.fechado && elemento.preenchimento !== 'transparent' ? elemento.preenchimento : undefined}
+          stroke={corBorda(elemento.corBorda, elemento.espessuraBorda)}
+          strokeWidth={elemento.espessuraBorda}
+          lineCap="round"
+          lineJoin="round"
         />
       )
+    case 'texto':
+      return <TextoKonva elemento={elemento} emEdicao={emEdicao} aoEditarTexto={aoEditarTexto} />
     case 'imagem':
       return <ImagemKonva elemento={elemento} />
+    case 'grafico':
+      return <GraficoKonva elemento={elemento} />
+    case 'tabela':
+      return <TabelaKonva elemento={elemento} />
   }
 }
 
@@ -287,6 +290,217 @@ function ImagemKonva({
       {konvaImage}
     </Group>
   )
+}
+
+// ---- Texto com efeitos criativos e texturas ----
+
+const TEXTURAS: Record<string, (number | string)[]> = {
+  dourado: [0, '#fff6c0', 0.45, '#e9c94b', 0.5, '#b8860b', 0.6, '#e9c94b', 1, '#8a6d1f'],
+  prata: [0, '#ffffff', 0.5, '#c7ccd1', 1, '#6b7280'],
+  metal: [0, '#e5e7eb', 0.5, '#6b7280', 1, '#111827'],
+  fogo: [0, '#fde68a', 0.5, '#f97316', 1, '#b91c1c'],
+  gelo: [0, '#ffffff', 0.5, '#bae6fd', 1, '#0284c7'],
+}
+
+function TextoKonva({
+  elemento,
+  emEdicao,
+  aoEditarTexto,
+}: {
+  elemento: Extract<Elemento, { tipo: 'texto' }>
+  emEdicao: boolean
+  aoEditarTexto: (id: string) => void
+}) {
+  const base = {
+    text: elemento.texto,
+    width: elemento.largura,
+    fontSize: elemento.tamanhoFonte,
+    fontFamily: elemento.fonte,
+    fontStyle: estiloFonte(elemento.negrito, elemento.italico),
+    textDecoration: elemento.sublinhado ? 'underline' : '',
+    align: elemento.alinhamento,
+    lineHeight: elemento.alturaLinha,
+    letterSpacing: elemento.espacamentoLetras,
+  }
+
+  // Preenchimento: sólido ou textura (gradiente vertical)
+  const preenchimento: Record<string, unknown> =
+    elemento.textura !== 'nenhuma' && TEXTURAS[elemento.textura]
+      ? {
+          fillPriority: 'linear-gradient',
+          fillLinearGradientStartPoint: { x: 0, y: 0 },
+          fillLinearGradientEndPoint: { x: 0, y: elemento.tamanhoFonte * 1.1 },
+          fillLinearGradientColorStops: TEXTURAS[elemento.textura],
+        }
+      : { fill: elemento.cor }
+
+  // Efeitos
+  const efeito: Record<string, unknown> = {}
+  if (elemento.efeito === 'sombra') {
+    Object.assign(efeito, { shadowColor: 'rgba(0,0,0,0.5)', shadowBlur: 6, shadowOffsetX: 4, shadowOffsetY: 4 })
+  } else if (elemento.efeito === 'contorno') {
+    Object.assign(efeito, { stroke: '#111827', strokeWidth: elemento.tamanhoFonte * 0.06, fillAfterStrokeEnabled: true })
+  } else if (elemento.efeito === 'neon') {
+    Object.assign(efeito, {
+      shadowColor: elemento.cor,
+      shadowBlur: 18,
+      shadowOpacity: 1,
+      stroke: elemento.cor,
+      strokeWidth: elemento.tamanhoFonte * 0.02,
+      fillAfterStrokeEnabled: true,
+    })
+  }
+
+  const dbl = { onDblClick: () => aoEditarTexto(elemento.id), onDblTap: () => aoEditarTexto(elemento.id) }
+
+  if (elemento.efeito === 'eco') {
+    return (
+      <Group {...dbl}>
+        {[3, 2, 1].map((i) => (
+          <Text key={i} {...base} x={i * 8} y={i * 8} fill={elemento.cor} opacity={0.18 * i} listening={false} />
+        ))}
+        <Text {...base} {...preenchimento} visible={!emEdicao} {...dbl} />
+      </Group>
+    )
+  }
+
+  return <Text {...base} {...preenchimento} {...efeito} visible={!emEdicao} {...dbl} />
+}
+
+// ---- Gráficos (barras, pizza, linhas, funil) ----
+
+function GraficoKonva({ elemento }: { elemento: Extract<Elemento, { tipo: 'grafico' }> }) {
+  const { largura: L, altura: A, dados, cores, corTexto, mostrarValores } = elemento
+  const cor = (i: number) => cores[i % cores.length] || '#7c4dff'
+  const valores = dados.map((d) => d.valor)
+  const max = Math.max(1, ...valores)
+  const padE = 12
+  const padB = 28
+  const padT = 14
+  const chartL = Math.max(1, L - padE * 2)
+  const chartA = Math.max(1, A - padB - padT)
+
+  const rotulo = (texto: string, x: number, y: number, w: number, cor: string, tam = 12, align: 'left' | 'center' = 'center') => (
+    <Text text={texto} x={x} y={y} width={w} align={align} fontSize={tam} fontFamily="Inter" fill={cor} />
+  )
+
+  if (elemento.tipoGrafico === 'pizza') {
+    const total = Math.max(1, valores.reduce((s, v) => s + v, 0))
+    const raio = Math.min(L, A) / 2 - 16
+    let inicio = -90
+    return (
+      <Group>
+        {dados.map((d, i) => {
+          const angulo = (d.valor / total) * 360
+          const w = (
+            <Wedge key={i} x={L / 2} y={A / 2} radius={raio} angle={angulo} rotation={inicio} fill={cor(i)} stroke="#ffffff" strokeWidth={2} />
+          )
+          inicio += angulo
+          return w
+        })}
+      </Group>
+    )
+  }
+
+  if (elemento.tipoGrafico === 'funil') {
+    const largMax = chartL
+    const alturaSeg = chartA / Math.max(1, dados.length)
+    return (
+      <Group>
+        {dados.map((d, i) => {
+          const wTop = (d.valor / max) * largMax
+          const prox = dados[i + 1]
+          const wBase = ((prox ? prox.valor : d.valor) / max) * largMax
+          const y = padT + i * alturaSeg
+          const cx = L / 2
+          return (
+            <Group key={i}>
+              <Line
+                points={[cx - wTop / 2, y, cx + wTop / 2, y, cx + wBase / 2, y + alturaSeg - 4, cx - wBase / 2, y + alturaSeg - 4]}
+                closed
+                fill={cor(i)}
+              />
+              {mostrarValores && rotulo(`${d.rotulo}: ${d.valor}`, 0, y + alturaSeg / 2 - 8, L, corTexto)}
+            </Group>
+          )
+        })}
+      </Group>
+    )
+  }
+
+  if (elemento.tipoGrafico === 'linhas') {
+    const passo = dados.length > 1 ? chartL / (dados.length - 1) : chartL
+    const pontos = dados.flatMap((d, i) => [padE + i * passo, padT + chartA - (d.valor / max) * chartA])
+    return (
+      <Group>
+        <Line points={pontos} stroke={cor(0)} strokeWidth={3} lineCap="round" lineJoin="round" tension={0.3} />
+        {dados.map((d, i) => (
+          <Group key={i}>
+            <Ellipse x={padE + i * passo} y={padT + chartA - (d.valor / max) * chartA} radiusX={4} radiusY={4} fill={cor(0)} />
+            {rotulo(d.rotulo, padE + i * passo - passo / 2, A - padB + 6, passo, corTexto)}
+          </Group>
+        ))}
+      </Group>
+    )
+  }
+
+  // barras (padrão)
+  const passo = chartL / Math.max(1, dados.length)
+  const largBarra = passo * 0.6
+  return (
+    <Group>
+      {dados.map((d, i) => {
+        const h = (d.valor / max) * chartA
+        const x = padE + i * passo + (passo - largBarra) / 2
+        const y = padT + chartA - h
+        return (
+          <Group key={i}>
+            <Rect x={x} y={y} width={largBarra} height={h} fill={cor(i)} cornerRadius={4} />
+            {mostrarValores && rotulo(String(d.valor), x - passo * 0.2, y - 16, largBarra + passo * 0.4, corTexto, 11)}
+            {rotulo(d.rotulo, padE + i * passo, A - padB + 6, passo, corTexto)}
+          </Group>
+        )
+      })}
+    </Group>
+  )
+}
+
+// ---- Tabelas ----
+
+function TabelaKonva({ elemento }: { elemento: Extract<Elemento, { tipo: 'tabela' }> }) {
+  const { celulas, largura: L, altura: A } = elemento
+  const linhas = celulas.length || 1
+  const colunas = Math.max(1, ...celulas.map((r) => r.length))
+  const colW = L / colunas
+  const rowH = A / linhas
+  const conteudo: ReactNode[] = []
+  for (let r = 0; r < linhas; r++) {
+    for (let c = 0; c < colunas; c++) {
+      const x = c * colW
+      const y = r * rowH
+      const cabecalho = r === 0
+      const fundo = cabecalho ? elemento.corCabecalho : r % 2 === 0 ? '#f9fafb' : '#ffffff'
+      conteudo.push(
+        <Rect key={`f${r}-${c}`} x={x} y={y} width={colW} height={rowH} fill={fundo} stroke={elemento.corLinha} strokeWidth={1} />,
+      )
+      conteudo.push(
+        <Text
+          key={`t${r}-${c}`}
+          x={x + 8}
+          y={y + rowH / 2 - 7}
+          width={colW - 16}
+          text={celulas[r]?.[c] ?? ''}
+          fontSize={13}
+          fontFamily="Inter"
+          fontStyle={cabecalho ? 'bold' : 'normal'}
+          fill={cabecalho ? elemento.corCabecalhoTexto : elemento.corTexto}
+          ellipsis
+          wrap="none"
+        />,
+      )
+    }
+  }
+  return <Group>{conteudo}</Group>
 }
 
 // ---- Máscaras de recorte (desenho do caminho no contexto) ----

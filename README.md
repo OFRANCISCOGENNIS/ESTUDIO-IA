@@ -1,6 +1,6 @@
 # DesignStudio Pro
 
-![status](https://img.shields.io/badge/status-Fase%205%20entregue-7c4dff)
+![status](https://img.shields.io/badge/status-completo%20(Fases%201--6)-22c55e)
 ![versão](https://img.shields.io/badge/versão-0.1.0-blue)
 ![stack](https://img.shields.io/badge/React%2018-TypeScript-3178c6)
 ![licença](https://img.shields.io/badge/licença-proprietária-lightgrey)
@@ -18,13 +18,13 @@ próprio navegador e podem ser abertos, editados e exportados a qualquer momento
 
 ## Status do projeto
 
-**Fases 1 a 5 — entregues.** O editor é totalmente funcional (Fase 1); com
-**edição de imagem**, **gradientes**, **mesclagem** e **múltiplas páginas**
-(Fase 2); **IA integrada**, **Brand Kit** e **planos** (Fase 3); **modo
-apresentação** e **exportação PDF/PPTX/SVG** (Fase 4); e agora com
-**colaboração em tempo real** (cursores, comentários, co-edição), **histórico
-de versões**, **compartilhamento por link com permissões** e **times/workspaces
-com biblioteca de assets** (Fase 5).
+**Roadmap completo — Fases 1 a 6 entregues.** Todas as fases planejadas foram
+implementadas e verificadas: editor (Fase 1); edição de imagem, gradientes,
+mesclagem e múltiplas páginas (Fase 2); IA integrada, Brand Kit e planos
+(Fase 3); apresentação e exportação PDF/PPTX/SVG (Fase 4); colaboração em tempo
+real, comentários, versões, permissões e times (Fase 5); e criação avançada —
+pen tool vetorial, tipografia criativa, gráficos/tabelas, PWA offline e
+arquitetura de plugins (Fase 6).
 
 ### Roadmap
 
@@ -35,7 +35,7 @@ com biblioteca de assets** (Fase 5).
 | **3** | Inteligência artificial | ✅ Texto→design, Magic Write, remoção de fundo, redimensionamento mágico, paleta automática, Brand Kit, planos |
 | **4** | Apresentação & movimento | ✅ Modo apresentação, transições, animações de entrada por elemento, export PDF/PPTX/SVG |
 | **5** | Colaboração | ✅ Tempo real (cursores, co-edição), comentários, versões, link com permissões, times/workspaces |
-| **6** | Criação avançada | Pen tool, tipografia criativa, gráficos/infográficos e PWA offline |
+| **6** | Criação avançada | ✅ Pen tool vetorial, tipografia criativa, gráficos/tabelas, PWA offline, plugins |
 
 ---
 
@@ -160,6 +160,26 @@ dispositivos.
 
 ---
 
+## Recursos da Fase 6 (criação avançada)
+
+- **Caneta vetorial (pen tool)**: clique para criar pontos, `Enter` ou duplo
+  clique finaliza, clicar no primeiro ponto fecha o caminho. Curvatura
+  ajustável (spline), preenchimento e traço.
+- **Tipografia criativa**: efeitos (**sombra, contorno, neon, eco**) e texturas
+  de preenchimento (**dourado, prata, metal, fogo, gelo**).
+- **Gráficos** editáveis: **barras, pizza, linhas e funil**, com dados inseridos
+  manualmente ou **importados de CSV**.
+- **Tabelas** editáveis: adicionar/remover linhas e colunas e editar células,
+  com cabeçalho estilizado.
+- **PWA offline**: manifest + service worker (cache do app shell). Como os
+  projetos ficam no `localStorage`, o app abre e edita offline após a primeira
+  visita.
+- **Arquitetura de plugins**: registro de extensões (`registrarPlugin`) que
+  adicionam ações ao editor sem tocar no núcleo — a aba **Apps** lista e executa
+  os plugins registrados (ex.: "Confete", "Grade de guias").
+
+---
+
 ## Stack
 
 - **React 18** + **TypeScript** (modo `strict`)
@@ -213,7 +233,8 @@ src/
 │  ├─ serializacao.ts   # JSON versionado + migração de esquema (v1→v2→v3)
 │  ├─ ia/               # IA: adapter, adaptador local, paleta, redimensionar
 │  ├─ exportadores/     # PDF, PPTX (ZIP OOXML), SVG e orquestração
-│  └─ colab/            # Colaboração: adapter, transporte BroadcastChannel
+│  ├─ colab/            # Colaboração: adapter, transporte BroadcastChannel
+│  └─ plugins/          # Arquitetura de extensões (registro + exemplos)
 ├─ estado/         # Stores Zustand
 │  ├─ useEditorStore.ts     # Estado do editor, páginas, comentários e auto-save
 │  ├─ usePaginaAtiva.ts     # Hook da página ativa
@@ -226,8 +247,9 @@ src/
 ├─ dados/          # Conteúdo pronto (templates, fontes, galeria, predefinições, planos)
 ├─ componentes/    # Interface
 │  ├─ dashboard/       # Tela inicial e projetos recentes
-│  ├─ editor/          # Canvas, barras, painéis e overlays
+│  ├─ editor/          # Canvas, barras, painéis, overlays e colaboração
 │  └─ apresentacao/    # Modo apresentação (palco + apresentador)
+├─ public/         # PWA: manifest.webmanifest e sw.js (service worker)
 ├─ utilitarios/    # Imagem (compressão), tempo (debounce/datas) e helpers
 ├─ hooks/          # useAtalhosTeclado e outros hooks de UI
 ├─ styles/         # CSS global e design system (Tailwind)
@@ -277,6 +299,7 @@ Para pré-visualizar o build de produção localmente: `npm run preview`.
 | `R` | Ferramenta Retângulo |
 | `O` | Ferramenta Elipse |
 | `L` | Ferramenta Linha |
+| `P` | Ferramenta Caneta (vetorial) |
 | `Delete` · `Backspace` | Remover seleção |
 | `Esc` | Limpar seleção |
 | `← ↑ → ↓` | Mover 1 px (com `Shift`, move 10 px) |
@@ -303,4 +326,4 @@ DesignStudio Pro é planejado em três planos, com liberação de recursos por
 
 ---
 
-<sub>DesignStudio Pro — Fases 1 a 5 entregues. Feito com React, TypeScript e muito café. ☕</sub>
+<sub>DesignStudio Pro — roadmap completo (Fases 1 a 6). Feito com React, TypeScript e muito café. ☕</sub>

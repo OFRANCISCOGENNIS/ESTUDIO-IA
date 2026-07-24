@@ -25,6 +25,9 @@ const ICONES_TIPO: Record<TipoElemento, string> = {
   estrela: '★',
   linha: '/',
   imagem: '🖼️',
+  caminho: '✎',
+  grafico: '📊',
+  tabela: '▦',
 }
 
 export function PainelCamadas() {

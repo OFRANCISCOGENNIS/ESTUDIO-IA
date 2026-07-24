@@ -7,7 +7,7 @@
 // =============================================================
 
 /** Versão atual do esquema de projeto. Incrementar ao mudar a estrutura. */
-export const VERSAO_ESQUEMA_ATUAL = 4
+export const VERSAO_ESQUEMA_ATUAL = 5
 
 export type TipoElemento =
   | 'texto'
@@ -17,6 +17,9 @@ export type TipoElemento =
   | 'estrela'
   | 'linha'
   | 'imagem'
+  | 'caminho'
+  | 'grafico'
+  | 'tabela'
 
 /** Modos de mesclagem por camada (globalCompositeOperation do canvas) */
 export type ModoMistura =
@@ -90,6 +93,11 @@ export interface ElementoForma extends ElementoBase {
   pontas: number
 }
 
+/** Efeitos criativos de texto (estilo Kittl) */
+export type EfeitoTexto = 'nenhum' | 'sombra' | 'contorno' | 'neon' | 'eco'
+/** Texturas de preenchimento de texto */
+export type TexturaTexto = 'nenhuma' | 'dourado' | 'prata' | 'metal' | 'fogo' | 'gelo'
+
 export interface ElementoTexto extends ElementoBase {
   tipo: 'texto'
   texto: string
@@ -103,6 +111,53 @@ export interface ElementoTexto extends ElementoBase {
   largura: number
   alturaLinha: number
   espacamentoLetras: number
+  /** Efeito criativo aplicado ao texto */
+  efeito: EfeitoTexto
+  /** Textura de preenchimento (sobrepõe a cor sólida) */
+  textura: TexturaTexto
+}
+
+/** Caminho vetorial desenhado com a ferramenta caneta */
+export interface ElementoCaminho extends ElementoBase {
+  tipo: 'caminho'
+  /** Pontos relativos à origem do elemento [x0,y0,x1,y1,...] */
+  pontos: number[]
+  fechado: boolean
+  /** Curvatura (0 = reto, 1 = bem curvo) */
+  tensao: number
+  /** Preenchimento (só quando fechado); 'transparent' = sem preenchimento */
+  preenchimento: string
+  corBorda: string
+  espessuraBorda: number
+}
+
+export type TipoGrafico = 'barras' | 'pizza' | 'linhas' | 'funil'
+export interface DadoGrafico {
+  rotulo: string
+  valor: number
+}
+
+export interface ElementoGrafico extends ElementoBase {
+  tipo: 'grafico'
+  tipoGrafico: TipoGrafico
+  dados: DadoGrafico[]
+  cores: string[]
+  largura: number
+  altura: number
+  mostrarValores: boolean
+  corTexto: string
+}
+
+export interface ElementoTabela extends ElementoBase {
+  tipo: 'tabela'
+  /** Linhas de células; a linha 0 é o cabeçalho */
+  celulas: string[][]
+  largura: number
+  altura: number
+  corCabecalho: string
+  corCabecalhoTexto: string
+  corTexto: string
+  corLinha: string
 }
 
 /** Ajustes finos de imagem (todos neutros = 0) */
@@ -174,6 +229,9 @@ export type Elemento =
   | ElementoTexto
   | ElementoImagem
   | ElementoLinha
+  | ElementoCaminho
+  | ElementoGrafico
+  | ElementoTabela
 
 /** Transição ao entrar em um slide na apresentação */
 export type TransicaoSlide = 'nenhuma' | 'fade' | 'slide' | 'zoom'
@@ -233,6 +291,7 @@ export type Ferramenta =
   | 'triangulo'
   | 'estrela'
   | 'linha'
+  | 'caneta'
 
 /** Tamanhos predefinidos do botão "Criar design" */
 export interface Predefinicao {

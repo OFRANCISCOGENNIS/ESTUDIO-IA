@@ -19,12 +19,50 @@ import { obterAdaptadorIA } from '../../nucleo/ia/registro'
 import {
   AJUSTES_NEUTROS,
   AjustesImagem,
+  DadoGrafico,
+  EfeitoTexto,
+  Elemento,
   FormatoMascara,
   Gradiente,
   ModoMistura,
+  TexturaTexto,
   TipoAnimacao,
+  TipoGrafico,
   TransicaoSlide,
 } from '../../tipos/projeto'
+
+const EFEITOS: { valor: EfeitoTexto; nome: string }[] = [
+  { valor: 'nenhum', nome: 'Nenhum' },
+  { valor: 'sombra', nome: 'Sombra' },
+  { valor: 'contorno', nome: 'Contorno' },
+  { valor: 'neon', nome: 'Neon' },
+  { valor: 'eco', nome: 'Eco' },
+]
+
+const TEXTURAS: { valor: TexturaTexto; nome: string }[] = [
+  { valor: 'nenhuma', nome: 'Nenhuma' },
+  { valor: 'dourado', nome: 'Dourado' },
+  { valor: 'prata', nome: 'Prata' },
+  { valor: 'metal', nome: 'Metal' },
+  { valor: 'fogo', nome: 'Fogo' },
+  { valor: 'gelo', nome: 'Gelo' },
+]
+
+const TIPOS_GRAFICO: { valor: TipoGrafico; nome: string }[] = [
+  { valor: 'barras', nome: 'Barras' },
+  { valor: 'pizza', nome: 'Pizza' },
+  { valor: 'linhas', nome: 'Linhas' },
+  { valor: 'funil', nome: 'Funil' },
+]
+
+/** Interpreta CSV simples "rotulo,valor" por linha */
+function csvParaDados(texto: string): DadoGrafico[] {
+  return texto
+    .split(/\r?\n/)
+    .map((linha) => linha.split(/[,;\t]/))
+    .filter((c) => c.length >= 2 && c[0].trim())
+    .map((c) => ({ rotulo: c[0].trim(), valor: Number(c[1]) || 0 }))
+}
 
 /** Animações de entrada disponíveis */
 const ANIMACOES: { valor: TipoAnimacao; nome: string }[] = [
@@ -350,6 +388,159 @@ function EditorGradiente({
         />
       )}
     </div>
+  )
+}
+
+/** Editor de propriedades de gráfico (dados manuais + CSV) */
+function SecaoGrafico({
+  elemento,
+  aoMudar,
+}: {
+  elemento: Extract<Elemento, { tipo: 'grafico' }>
+  aoMudar: (m: Partial<Elemento>) => void
+}) {
+  const [csv, setCsv] = useState('')
+  const definirDado = (i: number, campo: 'rotulo' | 'valor', valor: string) => {
+    const dados = elemento.dados.map((d, j) =>
+      j === i ? { ...d, [campo]: campo === 'valor' ? Number(valor) || 0 : valor } : d,
+    )
+    aoMudar({ dados })
+  }
+  return (
+    <Secao titulo="Gráfico">
+      <label className="block">
+        <span className="rotulo-campo">Tipo</span>
+        <select
+          value={elemento.tipoGrafico}
+          onChange={(e) => aoMudar({ tipoGrafico: e.target.value as TipoGrafico })}
+          className="campo-texto"
+        >
+          {TIPOS_GRAFICO.map((t) => (
+            <option key={t.valor} value={t.valor}>{t.nome}</option>
+          ))}
+        </select>
+      </label>
+
+      <div className="space-y-1.5">
+        <span className="rotulo-campo">Dados</span>
+        {elemento.dados.map((d, i) => (
+          <div key={i} className="flex gap-1.5">
+            <input
+              value={d.rotulo}
+              onChange={(e) => definirDado(i, 'rotulo', e.target.value)}
+              className="campo-texto"
+              placeholder="Rótulo"
+            />
+            <input
+              type="number"
+              value={d.valor}
+              onChange={(e) => definirDado(i, 'valor', e.target.value)}
+              className="campo-texto w-20"
+            />
+            <button
+              onClick={() => aoMudar({ dados: elemento.dados.filter((_, j) => j !== i) })}
+              className="shrink-0 px-1 text-red-500 hover:text-red-600"
+              title="Remover"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => aoMudar({ dados: [...elemento.dados, { rotulo: 'Novo', valor: 0 }] })}
+          className="botao-secundario w-full"
+        >
+          + Adicionar linha
+        </button>
+      </div>
+
+      <div>
+        <span className="rotulo-campo">Importar CSV (rótulo,valor por linha)</span>
+        <textarea
+          value={csv}
+          onChange={(e) => setCsv(e.target.value)}
+          rows={3}
+          placeholder={'Jan,40\nFev,65'}
+          className="campo-texto resize-none rolagem-fina"
+        />
+        <button
+          onClick={() => {
+            const dados = csvParaDados(csv)
+            if (dados.length) { aoMudar({ dados }); setCsv('') }
+          }}
+          className="botao-secundario mt-1 w-full"
+        >
+          Importar
+        </button>
+      </div>
+
+      <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-superficie-700 dark:text-superficie-200">
+        <input
+          type="checkbox"
+          checked={elemento.mostrarValores}
+          onChange={(e) => aoMudar({ mostrarValores: e.target.checked })}
+          className="h-4 w-4 rounded accent-primaria-500"
+        />
+        Mostrar valores
+      </label>
+      <CampoCor rotulo="Cor do texto" valor={elemento.corTexto} aoMudar={(v) => aoMudar({ corTexto: v })} />
+      <div className="grid grid-cols-2 gap-3">
+        <CampoNumero rotulo="Largura" valor={elemento.largura} minimo={50} aoMudar={(v) => aoMudar({ largura: Math.max(50, v) })} />
+        <CampoNumero rotulo="Altura" valor={elemento.altura} minimo={50} aoMudar={(v) => aoMudar({ altura: Math.max(50, v) })} />
+      </div>
+    </Secao>
+  )
+}
+
+/** Editor de propriedades de tabela (células + tamanho) */
+function SecaoTabela({
+  elemento,
+  aoMudar,
+}: {
+  elemento: Extract<Elemento, { tipo: 'tabela' }>
+  aoMudar: (m: Partial<Elemento>) => void
+}) {
+  const colunas = Math.max(1, ...elemento.celulas.map((r) => r.length))
+  const definirCelula = (r: number, c: number, valor: string) => {
+    const celulas = elemento.celulas.map((linha, i) =>
+      i === r ? linha.map((cel, j) => (j === c ? valor : cel)) : linha,
+    )
+    aoMudar({ celulas })
+  }
+  const addLinha = () => aoMudar({ celulas: [...elemento.celulas, Array(colunas).fill('')] })
+  const addColuna = () => aoMudar({ celulas: elemento.celulas.map((r) => [...r, '']) })
+  const remLinha = () => elemento.celulas.length > 1 && aoMudar({ celulas: elemento.celulas.slice(0, -1) })
+  const remColuna = () => colunas > 1 && aoMudar({ celulas: elemento.celulas.map((r) => r.slice(0, -1)) })
+
+  return (
+    <Secao titulo="Tabela">
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={addLinha} className="botao-secundario">+ Linha</button>
+        <button onClick={remLinha} className="botao-secundario">− Linha</button>
+        <button onClick={addColuna} className="botao-secundario">+ Coluna</button>
+        <button onClick={remColuna} className="botao-secundario">− Coluna</button>
+      </div>
+      <div className="space-y-1">
+        {elemento.celulas.map((linha, r) => (
+          <div key={r} className="flex gap-1">
+            {Array.from({ length: colunas }).map((_, c) => (
+              <input
+                key={c}
+                value={linha[c] ?? ''}
+                onChange={(e) => definirCelula(r, c, e.target.value)}
+                className={`campo-texto px-1.5 py-1 text-xs ${r === 0 ? 'font-semibold' : ''}`}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+      <CampoCor rotulo="Cabeçalho" valor={elemento.corCabecalho} aoMudar={(v) => aoMudar({ corCabecalho: v })} />
+      <CampoCor rotulo="Texto" valor={elemento.corTexto} aoMudar={(v) => aoMudar({ corTexto: v })} />
+      <div className="grid grid-cols-2 gap-3">
+        <CampoNumero rotulo="Largura" valor={elemento.largura} minimo={50} aoMudar={(v) => aoMudar({ largura: Math.max(50, v) })} />
+        <CampoNumero rotulo="Altura" valor={elemento.altura} minimo={40} aoMudar={(v) => aoMudar({ altura: Math.max(40, v) })} />
+      </div>
+    </Secao>
   )
 }
 
@@ -818,7 +1009,110 @@ export function PainelPropriedades() {
                     ))}
                   </ul>
                 )}
+
+                {/* Tipografia criativa: efeito + textura */}
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="rotulo-campo">Efeito</span>
+                    <select
+                      value={elementoUnico.efeito}
+                      onChange={(e) =>
+                        atualizarElementos([elementoUnico.id], { efeito: e.target.value as EfeitoTexto })
+                      }
+                      className="campo-texto"
+                    >
+                      {EFEITOS.map((o) => (
+                        <option key={o.valor} value={o.valor}>{o.nome}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="rotulo-campo">Textura</span>
+                    <select
+                      value={elementoUnico.textura}
+                      onChange={(e) =>
+                        atualizarElementos([elementoUnico.id], { textura: e.target.value as TexturaTexto })
+                      }
+                      className="campo-texto"
+                    >
+                      {TEXTURAS.map((o) => (
+                        <option key={o.valor} value={o.valor}>{o.nome}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </Secao>
+            )}
+
+            {/* Caminho (caneta vetorial) */}
+            {elementoUnico.tipo === 'caminho' && (
+              <Secao titulo="Caminho">
+                <CampoSlider
+                  rotulo="Curvatura"
+                  valor={elementoUnico.tensao * 100}
+                  min={0}
+                  max={100}
+                  aoMudar={(v) => atualizarElementos([elementoUnico.id], { tensao: v / 100 })}
+                />
+                <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-superficie-700 dark:text-superficie-200">
+                  <input
+                    type="checkbox"
+                    checked={elementoUnico.fechado}
+                    onChange={(e) => atualizarElementos([elementoUnico.id], { fechado: e.target.checked })}
+                    className="h-4 w-4 rounded accent-primaria-500"
+                  />
+                  Fechar caminho (permite preenchimento)
+                </label>
+                {elementoUnico.fechado && (
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-superficie-700 dark:text-superficie-200">
+                    <input
+                      type="checkbox"
+                      checked={elementoUnico.preenchimento !== 'transparent'}
+                      onChange={(e) =>
+                        atualizarElementos([elementoUnico.id], {
+                          preenchimento: e.target.checked ? '#7c4dff' : 'transparent',
+                        })
+                      }
+                      className="h-4 w-4 rounded accent-primaria-500"
+                    />
+                    Com preenchimento
+                  </label>
+                )}
+                {elementoUnico.fechado && elementoUnico.preenchimento !== 'transparent' && (
+                  <CampoCor
+                    rotulo="Preenchimento"
+                    valor={elementoUnico.preenchimento}
+                    aoMudar={(v) => atualizarElementos([elementoUnico.id], { preenchimento: v })}
+                  />
+                )}
+                <CampoCor
+                  rotulo="Traço"
+                  valor={elementoUnico.corBorda}
+                  aoMudar={(v) => atualizarElementos([elementoUnico.id], { corBorda: v })}
+                />
+                <CampoNumero
+                  rotulo="Espessura"
+                  valor={elementoUnico.espessuraBorda}
+                  minimo={0}
+                  aoMudar={(v) => atualizarElementos([elementoUnico.id], { espessuraBorda: Math.max(0, v) })}
+                />
+              </Secao>
+            )}
+
+            {/* Gráfico */}
+            {elementoUnico.tipo === 'grafico' && (
+              <SecaoGrafico
+                elemento={elementoUnico}
+                aoMudar={(m) => atualizarElementos([elementoUnico.id], m)}
+              />
+            )}
+
+            {/* Tabela */}
+            {elementoUnico.tipo === 'tabela' && (
+              <SecaoTabela
+                elemento={elementoUnico}
+                aoMudar={(m) => atualizarElementos([elementoUnico.id], m)}
+              />
             )}
 
             {/* Formas: retângulo / elipse / triângulo / estrela */}

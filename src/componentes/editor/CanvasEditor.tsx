@@ -11,9 +11,10 @@
 
 import Konva from 'konva'
 import { KonvaEventObject } from 'konva/lib/Node'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Layer, Line, Rect, Stage, Transformer } from 'react-konva'
 import {
+  criarCaminho,
   criarForma,
   criarLinha,
   criarTexto,
@@ -31,7 +32,7 @@ const LIMIAR_SNAP = 6 // px de canvas para "grudar" nas guias
 
 /** Dimensões aproximadas (sem rotação) para snap e marquee */
 function dimensoes(elemento: Elemento): { largura: number; altura: number } {
-  if (elemento.tipo === 'linha') {
+  if (elemento.tipo === 'linha' || elemento.tipo === 'caminho') {
     const xs = elemento.pontos.filter((_, i) => i % 2 === 0)
     const ys = elemento.pontos.filter((_, i) => i % 2 === 1)
     return { largura: Math.max(...xs) - Math.min(...xs), altura: Math.max(...ys) - Math.min(...ys) }
@@ -77,10 +78,14 @@ export function CanvasEditor() {
   const [espacoPressionado, setEspacoPressionado] = useState(false)
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
   const [guias, setGuias] = useState<number[][]>([])
+  const [caneta, setCaneta] = useState<{ x: number; y: number }[]>([])
+  const [canetaMouse, setCanetaMouse] = useState<{ x: number; y: number } | null>(null)
   const idAjustado = useRef<string | null>(null)
 
   const modoPan = ferramenta === 'mao' || espacoPressionado
-  const ferramentaCriacao = podeEditar && ferramenta !== 'selecao' && ferramenta !== 'mao'
+  const modoCaneta = ferramenta === 'caneta' && podeEditar
+  const ferramentaCriacao =
+    podeEditar && ferramenta !== 'selecao' && ferramenta !== 'mao' && ferramenta !== 'caneta'
 
   // ---- Medição do contêiner (canvas ocupa todo o espaço disponível) ----
   useLayoutEffect(() => {
@@ -191,6 +196,39 @@ export function CanvasEditor() {
     [],
   )
 
+  // Finaliza (ou cancela) o caminho em construção com a ferramenta caneta
+  const finalizarCaneta = useCallback(
+    (fechado: boolean) => {
+      setCaneta((atual) => {
+        if (atual.length >= 2) {
+          const inicio = atual[0]
+          const pontos = atual.flatMap((p) => [p.x - inicio.x, p.y - inicio.y])
+          adicionarElemento(criarCaminho(inicio.x, inicio.y, pontos, { fechado }))
+          definirFerramenta('selecao')
+        }
+        return []
+      })
+      setCanetaMouse(null)
+    },
+    [adicionarElemento, definirFerramenta],
+  )
+
+  // Teclado da caneta: Enter finaliza, Esc cancela
+  useEffect(() => {
+    if (!modoCaneta) return
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        finalizarCaneta(false)
+      } else if (e.key === 'Escape') {
+        setCaneta([])
+        setCanetaMouse(null)
+      }
+    }
+    window.addEventListener('keydown', aoTeclar)
+    return () => window.removeEventListener('keydown', aoTeclar)
+  }, [modoCaneta, finalizarCaneta])
+
   if (!projeto || !pagina) return null
 
   const aoSelecionarElemento = (
@@ -239,6 +277,20 @@ export function CanvasEditor() {
     const stage = stageRef.current
     if (!stage) return
 
+    // Ferramenta caneta: cada clique adiciona um ponto ao caminho
+    if (modoCaneta) {
+      const p = pontoNoCanvas()
+      if (caneta.length >= 2) {
+        const inicio = caneta[0]
+        if (Math.hypot(p.x - inicio.x, p.y - inicio.y) < 12 / zoom) {
+          finalizarCaneta(true)
+          return
+        }
+      }
+      setCaneta((atual) => [...atual, p])
+      return
+    }
+
     // Modo comentário: o clique (em qualquer lugar) fixa a âncora do pino
     if (modoComentario) {
       const p = pontoNoCanvas()
@@ -268,6 +320,7 @@ export function CanvasEditor() {
   const aoMoverNoStage = () => {
     const ponteiro = pontoNoCanvas()
     moverCursorColab(ponteiro.x, ponteiro.y)
+    if (modoCaneta && caneta.length > 0) setCanetaMouse(ponteiro)
     if (!marqueeInicio.current) return
     const p = ponteiro
     const inicio = marqueeInicio.current
@@ -360,7 +413,7 @@ export function CanvasEditor() {
     }
   }
 
-  const cursor = modoComentario
+  const cursor = modoComentario || modoCaneta
     ? 'crosshair'
     : modoPan
       ? 'grab'
@@ -387,6 +440,7 @@ export function CanvasEditor() {
         onMouseDown={aoApertarNoStage}
         onMouseMove={aoMoverNoStage}
         onMouseUp={aoSoltarNoStage}
+        onDblClick={() => modoCaneta && finalizarCaneta(false)}
         onDragMove={aoArrastarNoStage}
         onDragEnd={aoTerminarArrasteStage}
       >
@@ -440,6 +494,35 @@ export function CanvasEditor() {
               strokeWidth={1 / zoom}
             />
           )}
+
+          {/* Prévia do caminho em construção (ferramenta caneta) */}
+          {caneta.length > 0 && (
+            <>
+              <Line
+                points={[
+                  ...caneta.flatMap((p) => [p.x, p.y]),
+                  ...(canetaMouse ? [canetaMouse.x, canetaMouse.y] : []),
+                ]}
+                stroke="#7c4dff"
+                strokeWidth={2 / zoom}
+                dash={[6 / zoom, 4 / zoom]}
+              />
+              {caneta.map((p, i) => (
+                <Rect
+                  key={i}
+                  x={p.x - 4 / zoom}
+                  y={p.y - 4 / zoom}
+                  width={8 / zoom}
+                  height={8 / zoom}
+                  fill={i === 0 ? '#22c55e' : '#ffffff'}
+                  stroke="#7c4dff"
+                  strokeWidth={1.5 / zoom}
+                  cornerRadius={2 / zoom}
+                />
+              ))}
+            </>
+          )}
+
           <Transformer
             ref={transformerRef}
             rotateEnabled

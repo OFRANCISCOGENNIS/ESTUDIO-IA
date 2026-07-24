@@ -50,6 +50,8 @@ describe('serializacao', () => {
               largura: 400,
               alturaLinha: 1.4,
               espacamentoLetras: 2,
+              efeito: 'nenhum',
+              textura: 'nenhuma',
             },
             {
               id: 'ret-1',

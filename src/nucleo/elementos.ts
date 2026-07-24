@@ -9,9 +9,12 @@ import {
   AJUSTES_NEUTROS,
   ANIMACAO_PADRAO,
   Elemento,
+  ElementoCaminho,
   ElementoForma,
+  ElementoGrafico,
   ElementoImagem,
   ElementoLinha,
+  ElementoTabela,
   ElementoTexto,
 } from '../tipos/projeto'
 
@@ -88,6 +91,8 @@ export function criarTexto(
     largura: 480,
     alturaLinha: 1.2,
     espacamentoLetras: 0,
+    efeito: 'nenhum',
+    textura: 'nenhuma',
     ...extras,
   }
 }
@@ -133,6 +138,81 @@ export function criarLinha(
     cor: '#1f2937',
     espessura: 4,
     tracejada: false,
+    ...extras,
+  }
+}
+
+export function criarCaminho(
+  x: number,
+  y: number,
+  pontos: number[],
+  extras: Partial<ElementoCaminho> = {},
+): ElementoCaminho {
+  return {
+    ...basePadrao(),
+    tipo: 'caminho',
+    nome: proximoNome('Caminho'),
+    x,
+    y,
+    pontos,
+    fechado: false,
+    tensao: 0.5,
+    preenchimento: 'transparent',
+    corBorda: '#7c4dff',
+    espessuraBorda: 4,
+    ...extras,
+  }
+}
+
+export function criarGrafico(
+  x: number,
+  y: number,
+  extras: Partial<ElementoGrafico> = {},
+): ElementoGrafico {
+  return {
+    ...basePadrao(),
+    tipo: 'grafico',
+    nome: proximoNome('Gráfico'),
+    x,
+    y,
+    tipoGrafico: 'barras',
+    dados: [
+      { rotulo: 'Jan', valor: 40 },
+      { rotulo: 'Fev', valor: 65 },
+      { rotulo: 'Mar', valor: 50 },
+      { rotulo: 'Abr', valor: 80 },
+    ],
+    cores: ['#7c4dff', '#ec4899', '#22d3ee', '#facc15', '#22c55e', '#f97316'],
+    largura: 480,
+    altura: 320,
+    mostrarValores: true,
+    corTexto: '#1f2937',
+    ...extras,
+  }
+}
+
+export function criarTabela(
+  x: number,
+  y: number,
+  extras: Partial<ElementoTabela> = {},
+): ElementoTabela {
+  return {
+    ...basePadrao(),
+    tipo: 'tabela',
+    nome: proximoNome('Tabela'),
+    x,
+    y,
+    celulas: [
+      ['Produto', 'Preço', 'Estoque'],
+      ['Camiseta', 'R$ 49', '120'],
+      ['Boné', 'R$ 29', '80'],
+    ],
+    largura: 520,
+    altura: 180,
+    corCabecalho: '#7c4dff',
+    corCabecalhoTexto: '#ffffff',
+    corTexto: '#1f2937',
+    corLinha: '#e5e7eb',
     ...extras,
   }
 }
