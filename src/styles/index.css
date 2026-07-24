@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos globais do DesignStudio Pro */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-superficie-100 font-sans text-superficie-900 antialiased;
+  overscroll-behavior: none;
+}
+
+/* Barra de rolagem discreta nos painéis */
+.rolagem-fina::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.rolagem-fina::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-superficie-200;
+}
+.dark .rolagem-fina::-webkit-scrollbar-thumb {
+  @apply bg-superficie-700;
+}
+.rolagem-fina::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Botões utilitários do design system */
+@layer components {
+  .botao-primario {
+    @apply rounded-lg bg-primaria-500 px-4 py-2 text-sm font-semibold text-white shadow-suave transition hover:bg-primaria-600 active:scale-[0.98];
+  }
+  .botao-secundario {
+    @apply rounded-lg bg-superficie-100 px-4 py-2 text-sm font-medium text-superficie-900 transition hover:bg-superficie-200 dark:bg-superficie-800 dark:text-superficie-100 dark:hover:bg-superficie-700;
+  }
+  .botao-icone {
+    @apply flex h-9 w-9 items-center justify-center rounded-lg text-superficie-700 transition hover:bg-superficie-100 disabled:opacity-30 disabled:hover:bg-transparent dark:text-superficie-200 dark:hover:bg-superficie-700;
+  }
+  .campo-texto {
+    @apply w-full rounded-lg border border-superficie-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-primaria-400 focus:ring-2 focus:ring-primaria-100 dark:border-superficie-700 dark:bg-superficie-800 dark:text-superficie-100 dark:focus:ring-primaria-900;
+  }
+  .rotulo-campo {
+    @apply mb-1 block text-xs font-medium text-superficie-700 dark:text-superficie-200;
+  }
+}
