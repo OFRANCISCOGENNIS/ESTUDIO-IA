@@ -7,7 +7,7 @@
 // =============================================================
 
 /** Versão atual do esquema de projeto. Incrementar ao mudar a estrutura. */
-export const VERSAO_ESQUEMA_ATUAL = 3
+export const VERSAO_ESQUEMA_ATUAL = 4
 
 export type TipoElemento =
   | 'texto'
@@ -178,6 +178,22 @@ export type Elemento =
 /** Transição ao entrar em um slide na apresentação */
 export type TransicaoSlide = 'nenhuma' | 'fade' | 'slide' | 'zoom'
 
+/** Comentário ancorado a um ponto do canvas (opcionalmente a um elemento) */
+export interface Comentario {
+  id: string
+  /** Elemento ao qual o comentário se refere (ou null se ancorado à página) */
+  elementoId: string | null
+  /** Posição da âncora em coordenadas do canvas */
+  x: number
+  y: number
+  autor: string
+  /** Cor do autor (para o pino) */
+  cor: string
+  texto: string
+  criadoEm: string
+  resolvido: boolean
+}
+
 /** Uma página/prancheta dentro de um projeto (também é um slide) */
 export interface Pagina {
   id: string
@@ -188,6 +204,8 @@ export interface Pagina {
   notas: string
   /** Transição ao entrar neste slide */
   transicao: TransicaoSlide
+  /** Comentários de colaboração ancorados nesta página */
+  comentarios: Comentario[]
 }
 
 /** Documento de projeto completo, serializável em JSON */

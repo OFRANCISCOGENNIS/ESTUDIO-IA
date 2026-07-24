@@ -21,9 +21,11 @@ import {
 import { mimeDoFormato, registrarExportador } from '../../nucleo/exportacao'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
+import { useColabStore } from '../../estado/useColabStore'
 import { Elemento, Ferramenta } from '../../tipos/projeto'
 import { ElementoKonva } from './ElementoKonva'
 import { OverlayTextoEdicao } from './OverlayTextoEdicao'
+import { CamadaColab } from './CamadaColab'
 
 const LIMIAR_SNAP = 6 // px de canvas para "grudar" nas guias
 
@@ -59,6 +61,11 @@ export function CanvasEditor() {
   const adicionarElemento = useEditorStore((s) => s.adicionarElemento)
   const atualizarElementos = useEditorStore((s) => s.atualizarElementos)
 
+  const moverCursorColab = useColabStore((s) => s.moverCursor)
+  const modoComentario = useColabStore((s) => s.modoComentario)
+  const definirComentarioPendente = useColabStore((s) => s.definirComentarioPendente)
+  const podeEditar = useColabStore((s) => s.papel === 'editor')
+
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
   const camadaUiRef = useRef<Konva.Layer>(null)
@@ -73,7 +80,7 @@ export function CanvasEditor() {
   const idAjustado = useRef<string | null>(null)
 
   const modoPan = ferramenta === 'mao' || espacoPressionado
-  const ferramentaCriacao = ferramenta !== 'selecao' && ferramenta !== 'mao'
+  const ferramentaCriacao = podeEditar && ferramenta !== 'selecao' && ferramenta !== 'mao'
 
   // ---- Medição do contêiner (canvas ocupa todo o espaço disponível) ----
   useLayoutEffect(() => {
@@ -131,12 +138,15 @@ export function CanvasEditor() {
   useEffect(() => {
     const tr = transformerRef.current
     if (!tr) return
-    const nos = selecionados
-      .map((id) => nosRef.current.get(id))
-      .filter((n): n is Konva.Node => Boolean(n))
+    // Sem permissão de edição, não mostra alças de transformação
+    const nos = podeEditar
+      ? selecionados
+          .map((id) => nosRef.current.get(id))
+          .filter((n): n is Konva.Node => Boolean(n))
+      : []
     tr.nodes(nos)
     tr.getLayer()?.batchDraw()
-  }, [selecionados, pagina?.elementos, textoEmEdicao])
+  }, [selecionados, pagina?.elementos, textoEmEdicao, podeEditar])
 
   // ---- Registro do exportador: rasteriza fielmente o artboard ----
   useEffect(() => {
@@ -228,6 +238,16 @@ export function CanvasEditor() {
   const aoApertarNoStage = (e: KonvaEventObject<MouseEvent>) => {
     const stage = stageRef.current
     if (!stage) return
+
+    // Modo comentário: o clique (em qualquer lugar) fixa a âncora do pino
+    if (modoComentario) {
+      const p = pontoNoCanvas()
+      const alvo = e.target
+      const idAlvo = alvo && alvo !== stage ? alvo.getParent()?.id() || null : null
+      definirComentarioPendente({ x: p.x, y: p.y, elementoId: idAlvo })
+      return
+    }
+
     const cliqueVazio = e.target === stage || e.target.name() === 'fundo-artboard'
     if (!cliqueVazio) return
 
@@ -246,8 +266,10 @@ export function CanvasEditor() {
   }
 
   const aoMoverNoStage = () => {
+    const ponteiro = pontoNoCanvas()
+    moverCursorColab(ponteiro.x, ponteiro.y)
     if (!marqueeInicio.current) return
-    const p = pontoNoCanvas()
+    const p = ponteiro
     const inicio = marqueeInicio.current
     setMarquee({
       x: Math.min(inicio.x, p.x),
@@ -338,13 +360,13 @@ export function CanvasEditor() {
     }
   }
 
-  const cursor = modoPan
-    ? espacoPressionado
+  const cursor = modoComentario
+    ? 'crosshair'
+    : modoPan
       ? 'grab'
-      : 'grab'
-    : ferramentaCriacao
-      ? 'crosshair'
-      : 'default'
+      : ferramentaCriacao
+        ? 'crosshair'
+        : 'default'
 
   return (
     <div
@@ -387,10 +409,11 @@ export function CanvasEditor() {
               key={elemento.id}
               elemento={elemento}
               emEdicao={textoEmEdicao === elemento.id}
+              permitirArraste={podeEditar}
               registrarNo={registrarNo}
               aoSelecionar={aoSelecionarElemento}
               aoAlterar={(id, mudancas) => atualizarElementos([id], mudancas)}
-              aoEditarTexto={definirTextoEmEdicao}
+              aoEditarTexto={podeEditar ? definirTextoEmEdicao : () => {}}
             />
           ))}
         </Layer>
@@ -439,6 +462,9 @@ export function CanvasEditor() {
           aoFechar={() => definirTextoEmEdicao(null)}
         />
       )}
+
+      {/* Sobreposição de colaboração: cursores e comentários */}
+      <CamadaColab />
     </div>
   )
 }

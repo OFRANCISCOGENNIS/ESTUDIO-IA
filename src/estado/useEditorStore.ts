@@ -13,7 +13,7 @@ import { clonarElemento } from '../nucleo/elementos'
 import { redimensionarElementos } from '../nucleo/ia/redimensionar'
 import { exportarDataUrl } from '../nucleo/exportacao'
 import { debounce } from '../utilitarios/tempo'
-import { Elemento, Ferramenta, Pagina, Projeto } from '../tipos/projeto'
+import { Comentario, Elemento, Ferramenta, Pagina, Projeto } from '../tipos/projeto'
 import { useProjetosStore } from './useProjetosStore'
 
 export type EstadoSalvamento = 'salvo' | 'pendente' | 'salvando'
@@ -86,6 +86,15 @@ interface EstadoEditor {
   apresentando: boolean
   iniciarApresentacao: () => void
   sairApresentacao: () => void
+
+  // ---- Colaboração (comentários) ----
+  adicionarComentario: (comentario: Comentario) => void
+  resolverComentario: (id: string) => void
+  removerComentario: (id: string) => void
+  /** Aplica elementos vindos de outro colaborador (sem histórico) */
+  aplicarElementosRemotos: (paginaId: string, elementos: Elemento[], corFundo: string) => void
+  /** Aplica comentários vindos de outro colaborador */
+  aplicarComentariosRemotos: (paginaId: string, comentarios: Comentario[]) => void
 
   desfazer: () => void
   refazer: () => void
@@ -440,6 +449,7 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
         elementos: [],
         notas: '',
         transicao: 'fade',
+        comentarios: [],
       }
       historico.registrar(snapshotDe(projeto))
       atualizarFlagsHistorico()
@@ -464,6 +474,7 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
         elementos: clonarElementosParaPagina(original.elementos),
         notas: original.notas,
         transicao: original.transicao,
+        comentarios: [],
       }
       historico.registrar(snapshotDe(projeto))
       atualizarFlagsHistorico()
@@ -516,6 +527,58 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     apresentando: false,
     iniciarApresentacao: () => set({ apresentando: true }),
     sairApresentacao: () => set({ apresentando: false }),
+
+    adicionarComentario: (comentario) => {
+      const { projeto, paginaAtivaId } = get()
+      if (!projeto) return
+      const paginas = projeto.paginas.map((p) =>
+        p.id === paginaAtivaId ? { ...p, comentarios: [...p.comentarios, comentario] } : p,
+      )
+      set({ projeto: { ...projeto, paginas } })
+      agendarSalvamento()
+    },
+
+    resolverComentario: (id) => {
+      const { projeto } = get()
+      if (!projeto) return
+      const paginas = projeto.paginas.map((p) => ({
+        ...p,
+        comentarios: p.comentarios.map((c) =>
+          c.id === id ? { ...c, resolvido: !c.resolvido } : c,
+        ),
+      }))
+      set({ projeto: { ...projeto, paginas } })
+      agendarSalvamento()
+    },
+
+    removerComentario: (id) => {
+      const { projeto } = get()
+      if (!projeto) return
+      const paginas = projeto.paginas.map((p) => ({
+        ...p,
+        comentarios: p.comentarios.filter((c) => c.id !== id),
+      }))
+      set({ projeto: { ...projeto, paginas } })
+      agendarSalvamento()
+    },
+
+    aplicarElementosRemotos: (paginaId, elementos, corFundo) => {
+      const { projeto } = get()
+      if (!projeto) return
+      const paginas = projeto.paginas.map((p) =>
+        p.id === paginaId ? { ...p, elementos, corFundo } : p,
+      )
+      set({ projeto: { ...projeto, paginas } })
+    },
+
+    aplicarComentariosRemotos: (paginaId, comentarios) => {
+      const { projeto } = get()
+      if (!projeto) return
+      const paginas = projeto.paginas.map((p) =>
+        p.id === paginaId ? { ...p, comentarios } : p,
+      )
+      set({ projeto: { ...projeto, paginas } })
+    },
 
     desfazer: () => {
       const { projeto } = get()

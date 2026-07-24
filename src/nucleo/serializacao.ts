@@ -10,6 +10,7 @@ import {
   AJUSTES_NEUTROS,
   AnimacaoEntrada,
   ANIMACAO_PADRAO,
+  Comentario,
   Elemento,
   FormatoMascara,
   Gradiente,
@@ -86,6 +87,7 @@ function normalizarProjeto(bruto: Record<string, unknown>): Projeto {
       elementos: [],
       notas: '',
       transicao: 'fade',
+      comentarios: [],
     })
   }
   const agora = new Date().toISOString()
@@ -118,6 +120,27 @@ function normalizarPagina(bruto: Record<string, unknown>, indice: number): Pagin
     transicao: TRANSICOES.includes(bruto.transicao as TransicaoSlide)
       ? (bruto.transicao as TransicaoSlide)
       : 'fade',
+    comentarios: Array.isArray(bruto.comentarios)
+      ? bruto.comentarios
+          .map((c) => normalizarComentario(c as Record<string, unknown>))
+          .filter((c): c is Comentario => c !== null)
+      : [],
+  }
+}
+
+function normalizarComentario(bruto: Record<string, unknown>): Comentario | null {
+  if (typeof bruto !== 'object' || bruto === null) return null
+  if (typeof bruto.texto !== 'string') return null
+  return {
+    id: typeof bruto.id === 'string' ? bruto.id : `c-${Math.random().toString(36).slice(2, 10)}`,
+    elementoId: typeof bruto.elementoId === 'string' ? bruto.elementoId : null,
+    x: numeroOu(bruto.x, 0),
+    y: numeroOu(bruto.y, 0),
+    autor: typeof bruto.autor === 'string' ? bruto.autor : 'Anônimo',
+    cor: typeof bruto.cor === 'string' ? bruto.cor : '#7c4dff',
+    texto: bruto.texto,
+    criadoEm: typeof bruto.criadoEm === 'string' ? bruto.criadoEm : new Date().toISOString(),
+    resolvido: bruto.resolvido === true,
   }
 }
 

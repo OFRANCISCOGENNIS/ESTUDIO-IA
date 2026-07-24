@@ -16,9 +16,13 @@ import { carregarArquivoImagem, ImagemCarregada } from '../../utilitarios/imagem
 import { tempoRelativo } from '../../utilitarios/tempo'
 import { PainelIA } from './PainelIA'
 import { PainelMarca } from './PainelMarca'
+import { PainelColab } from './PainelColab'
+import { PainelTime } from './PainelTime'
 
 /** Identificadores das abas da trilha lateral */
-type Aba = 'Templates' | 'Elementos' | 'Texto' | 'Uploads' | 'Fotos' | 'IA' | 'Marca' | 'Projetos' | 'Apps'
+type Aba =
+  | 'Templates' | 'Elementos' | 'Texto' | 'Uploads' | 'Fotos'
+  | 'IA' | 'Marca' | 'Colaborar' | 'Time' | 'Projetos' | 'Apps'
 
 /** Abas exibidas na trilha, em ordem */
 const ABAS: { id: Aba; icone: string }[] = [
@@ -29,6 +33,8 @@ const ABAS: { id: Aba; icone: string }[] = [
   { id: 'Fotos', icone: '🖼️' },
   { id: 'IA', icone: '✨' },
   { id: 'Marca', icone: '🎯' },
+  { id: 'Colaborar', icone: '👥' },
+  { id: 'Time', icone: '🏢' },
   { id: 'Projetos', icone: '📁' },
   { id: 'Apps', icone: '🧩' },
 ]
@@ -396,6 +402,12 @@ export function BarraFerramentas() {
 
       case 'Marca':
         return <PainelMarca />
+
+      case 'Colaborar':
+        return <PainelColab />
+
+      case 'Time':
+        return <PainelTime />
 
       case 'Projetos':
         return (

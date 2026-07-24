@@ -5,7 +5,9 @@
 // =============================================================
 
 import { useAtalhosTeclado } from '../../hooks/useAtalhosTeclado'
+import { useSincronizacaoColab } from '../../hooks/useSincronizacaoColab'
 import { useEditorStore } from '../../estado/useEditorStore'
+import { useColabStore } from '../../estado/useColabStore'
 import { ModoApresentacao } from '../apresentacao/ModoApresentacao'
 import { BarraFerramentas } from './BarraFerramentas'
 import { BarraPaginas } from './BarraPaginas'
@@ -21,11 +23,20 @@ interface Props {
 
 export function Editor({ temaEscuro, aoAlternarTema }: Props) {
   useAtalhosTeclado()
+  useSincronizacaoColab()
   const apresentando = useEditorStore((s) => s.apresentando)
+  const papel = useColabStore((s) => s.papel)
 
   return (
     <div className="flex h-screen flex-col bg-superficie-100 dark:bg-superficie-950">
       <BarraSuperior temaEscuro={temaEscuro} aoAlternarTema={aoAlternarTema} />
+      {papel !== 'editor' && (
+        <div className="flex items-center justify-center gap-2 bg-amber-100 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+          {papel === 'viewer'
+            ? '👁 Modo somente leitura — você não pode editar este design.'
+            : '💬 Modo comentário — você pode comentar, mas não editar.'}
+        </div>
+      )}
       <div className="flex flex-1 overflow-hidden">
         <BarraFerramentas />
         <div className="flex flex-1 flex-col overflow-hidden">

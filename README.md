@@ -1,6 +1,6 @@
 # DesignStudio Pro
 
-![status](https://img.shields.io/badge/status-Fase%204%20entregue-7c4dff)
+![status](https://img.shields.io/badge/status-Fase%205%20entregue-7c4dff)
 ![versão](https://img.shields.io/badge/versão-0.1.0-blue)
 ![stack](https://img.shields.io/badge/React%2018-TypeScript-3178c6)
 ![licença](https://img.shields.io/badge/licença-proprietária-lightgrey)
@@ -18,11 +18,13 @@ próprio navegador e podem ser abertos, editados e exportados a qualquer momento
 
 ## Status do projeto
 
-**Fases 1 a 4 — entregues.** O editor é totalmente funcional para criar peças
-de design (Fase 1); com **edição de imagem**, **gradientes**, **mesclagem** e
-**múltiplas páginas** (Fase 2); **IA integrada**, **Brand Kit** e **planos**
-(Fase 3); e agora com **modo apresentação** (transições, animações de elemento,
-modo apresentador) e **exportação para PDF, PPTX e SVG** (Fase 4).
+**Fases 1 a 5 — entregues.** O editor é totalmente funcional (Fase 1); com
+**edição de imagem**, **gradientes**, **mesclagem** e **múltiplas páginas**
+(Fase 2); **IA integrada**, **Brand Kit** e **planos** (Fase 3); **modo
+apresentação** e **exportação PDF/PPTX/SVG** (Fase 4); e agora com
+**colaboração em tempo real** (cursores, comentários, co-edição), **histórico
+de versões**, **compartilhamento por link com permissões** e **times/workspaces
+com biblioteca de assets** (Fase 5).
 
 ### Roadmap
 
@@ -32,7 +34,7 @@ modo apresentador) e **exportação para PDF, PPTX e SVG** (Fase 4).
 | **2** | Edição de imagem | ✅ Filtros (20+), ajustes de cor, máscaras, gradientes, mesclagem, múltiplas páginas |
 | **3** | Inteligência artificial | ✅ Texto→design, Magic Write, remoção de fundo, redimensionamento mágico, paleta automática, Brand Kit, planos |
 | **4** | Apresentação & movimento | ✅ Modo apresentação, transições, animações de entrada por elemento, export PDF/PPTX/SVG |
-| **5** | Colaboração | Edição multiusuário em tempo real, comentários e permissões |
+| **5** | Colaboração | ✅ Tempo real (cursores, co-edição), comentários, versões, link com permissões, times/workspaces |
 | **6** | Criação avançada | Pen tool, tipografia criativa, gráficos/infográficos e PWA offline |
 
 ---
@@ -131,6 +133,33 @@ bibliotecas externas**, e são puros/testáveis.
 
 ---
 
+## Recursos da Fase 5 (colaboração)
+
+A colaboração usa o mesmo **adapter pattern**: o editor fala com uma interface
+`TransporteColab`. O adaptador padrão é **BroadcastChannel** — colaboração em
+tempo real real entre **abas/janelas do mesmo navegador**, sem servidor —
+pronto para ser trocado por um adaptador WebSocket para colaboração entre
+dispositivos.
+
+- **Tempo real**: **cursores ao vivo** com nome e cor por participante, presença
+  (quem está online) e **co-edição** — mudanças de elementos e de fundo
+  sincronizadas entre os colaboradores, com supressão de eco.
+- **Comentários** ancorados a um ponto do canvas (opcionalmente a um elemento),
+  sincronizados ao vivo, com pinos no canvas, painel, resolver e excluir.
+- **Histórico de versões**: salve snapshots nomeados do projeto e restaure
+  qualquer um deles.
+- **Compartilhamento por link com permissões** — `visualizar`, `comentar` ou
+  `editar`. Abrir o link entra na sessão com o papel indicado; o modo somente
+  leitura desativa arrasto, criação, transformação e o painel de propriedades.
+- **Times / workspaces** com **biblioteca de assets compartilhada**: crie times,
+  convide membros e reutilize assets em qualquer design.
+
+> Como o transporte é BroadcastChannel, a demonstração é entre abas do mesmo
+> navegador. Um backend Node + WebSocket implementaria a mesma interface para
+> colaboração remota, sem mudar a interface do editor.
+
+---
+
 ## Stack
 
 - **React 18** + **TypeScript** (modo `strict`)
@@ -183,10 +212,14 @@ src/
 │  ├─ historico.ts      # Pilha de undo/redo por snapshots
 │  ├─ serializacao.ts   # JSON versionado + migração de esquema (v1→v2→v3)
 │  ├─ ia/               # IA: adapter, adaptador local, paleta, redimensionar
-│  └─ exportadores/     # PDF, PPTX (ZIP OOXML), SVG e orquestração
+│  ├─ exportadores/     # PDF, PPTX (ZIP OOXML), SVG e orquestração
+│  └─ colab/            # Colaboração: adapter, transporte BroadcastChannel
 ├─ estado/         # Stores Zustand
-│  ├─ useEditorStore.ts     # Estado do editor, páginas e auto-save
+│  ├─ useEditorStore.ts     # Estado do editor, páginas, comentários e auto-save
 │  ├─ usePaginaAtiva.ts     # Hook da página ativa
+│  ├─ useColabStore.ts      # Presença, cursores e papéis
+│  ├─ useVersoesStore.ts    # Histórico de versões
+│  ├─ useWorkspaceStore.ts  # Times e assets compartilhados
 │  ├─ useMarcaStore.ts      # Brand Kits (paleta, fontes, logos)
 │  ├─ usePlanoStore.ts      # Plano atual (feature flags)
 │  └─ useProjetosStore.ts   # Índice e persistência de projetos
@@ -262,7 +295,7 @@ DesignStudio Pro é planejado em três planos, com liberação de recursos por
 |-------|---------|-------------|
 | **Gratuito** | Uso pessoal | Editor completo, texto→design e Magic Write, com limites |
 | **Pro** | Criadores e freelancers | Remoção de fundo, redimensionamento mágico, Brand Kit e export SVG |
-| **Time** | Equipes | Tudo do Pro + colaboração em tempo real, biblioteca compartilhada e permissões |
+| **Time** | Equipes | Tudo do Pro + colaboração em tempo real, versões, biblioteca compartilhada e permissões |
 
 > As _feature flags_ já estão implementadas (`recursoLiberado`) e gateiam os
 > recursos por plano. A cobrança real será conectada a um backend de billing;
@@ -270,4 +303,4 @@ DesignStudio Pro é planejado em três planos, com liberação de recursos por
 
 ---
 
-<sub>DesignStudio Pro — Fases 1 a 4 entregues. Feito com React, TypeScript e muito café. ☕</sub>
+<sub>DesignStudio Pro — Fases 1 a 5 entregues. Feito com React, TypeScript e muito café. ☕</sub>

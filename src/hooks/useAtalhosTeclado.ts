@@ -6,6 +6,7 @@
 
 import { useEffect } from 'react'
 import { useEditorStore } from '../estado/useEditorStore'
+import { useColabStore } from '../estado/useColabStore'
 
 export function useAtalhosTeclado() {
   useEffect(() => {
@@ -19,6 +20,12 @@ export function useAtalhosTeclado() {
           alvo.tagName === 'TEXTAREA' ||
           alvo.isContentEditable)
       if (emCampo || estado.textoEmEdicao) return
+
+      // Sem permissão de edição: só limpar seleção
+      if (useColabStore.getState().papel !== 'editor') {
+        if (e.key === 'Escape') estado.limparSelecao()
+        return
+      }
 
       const comModificador = e.ctrlKey || e.metaKey
       const tecla = e.key.toLowerCase()

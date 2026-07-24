@@ -41,6 +41,8 @@ const DIMENSAO_MINIMA = 5
 interface Props {
   elemento: Elemento
   emEdicao: boolean
+  /** Permite arrastar (falso em modo somente-leitura/colaboração) */
+  permitirArraste?: boolean
   registrarNo: (id: string, no: Konva.Node | null) => void
   aoSelecionar: (id: string, e: KonvaEventObject<MouseEvent | TouchEvent>) => void
   aoAlterar: (id: string, mudancas: Partial<Elemento>) => void
@@ -50,6 +52,7 @@ interface Props {
 export function ElementoKonva({
   elemento,
   emEdicao,
+  permitirArraste = true,
   registrarNo,
   aoSelecionar,
   aoAlterar,
@@ -109,7 +112,7 @@ export function ElementoKonva({
     rotation: elemento.rotacao,
     opacity: elemento.opacidade,
     visible: elemento.visivel,
-    draggable: !elemento.bloqueado,
+    draggable: permitirArraste && !elemento.bloqueado,
     globalCompositeOperation: composicao(elemento.mistura),
     onMouseDown: (e: KonvaEventObject<MouseEvent>) => aoSelecionar(elemento.id, e),
     onTap: (e: KonvaEventObject<TouchEvent>) => aoSelecionar(elemento.id, e),

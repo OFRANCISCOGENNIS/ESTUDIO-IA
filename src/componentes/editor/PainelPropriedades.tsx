@@ -11,6 +11,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 import { usePlanoStore } from '../../estado/usePlanoStore'
+import { useColabStore } from '../../estado/useColabStore'
 import { FONTES } from '../../dados/fontes'
 import { recursoLiberado } from '../../dados/planos'
 import { FILTROS } from '../../nucleo/filtros'
@@ -365,6 +366,7 @@ export function PainelPropriedades() {
   const removerSelecionados = useEditorStore((s) => s.removerSelecionados)
   const alinharSelecionados = useEditorStore((s) => s.alinharSelecionados)
   const plano = usePlanoStore((s) => s.plano)
+  const podeEditar = useColabStore((s) => s.papel === 'editor')
 
   // Estado dos recursos de IA por imagem/texto selecionado
   const [paletaExtraida, setPaletaExtraida] = useState<string[]>([])
@@ -446,8 +448,12 @@ export function PainelPropriedades() {
         </p>
       </div>
 
-      {/* Corpo rolável */}
-      <div className="rolagem-fina flex-1 space-y-6 overflow-y-auto p-4">
+      {/* Corpo rolável (desabilitado em modo somente-leitura) */}
+      <div
+        className={`rolagem-fina flex-1 space-y-6 overflow-y-auto p-4 ${
+          podeEditar ? '' : 'pointer-events-none select-none opacity-60'
+        }`}
+      >
         {/* ===== Modo A: propriedades do canvas ===== */}
         {!elementoUnico && selecionados.length === 0 && (
           <>

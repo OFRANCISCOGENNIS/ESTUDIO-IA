@@ -25,6 +25,7 @@ describe('serializacao', () => {
           corFundo: '#101820',
           notas: '',
           transicao: 'fade',
+          comentarios: [],
           elementos: [
             {
               id: 'txt-1',
