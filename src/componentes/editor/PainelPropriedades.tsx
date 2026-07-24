@@ -21,7 +21,26 @@ import {
   FormatoMascara,
   Gradiente,
   ModoMistura,
+  TipoAnimacao,
+  TransicaoSlide,
 } from '../../tipos/projeto'
+
+/** Animações de entrada disponíveis */
+const ANIMACOES: { valor: TipoAnimacao; nome: string }[] = [
+  { valor: 'nenhuma', nome: 'Nenhuma' },
+  { valor: 'fade', nome: 'Surgir (fade)' },
+  { valor: 'rise', nome: 'Subir (rise)' },
+  { valor: 'pan', nome: 'Deslizar (pan)' },
+  { valor: 'tumble', nome: 'Cambalhota (tumble)' },
+]
+
+/** Transições de slide disponíveis */
+const TRANSICOES: { valor: TransicaoSlide; nome: string }[] = [
+  { valor: 'nenhuma', nome: 'Nenhuma' },
+  { valor: 'fade', nome: 'Fade' },
+  { valor: 'slide', nome: 'Deslizar' },
+  { valor: 'zoom', nome: 'Zoom' },
+]
 
 /** Carrega um HTMLImageElement (data URL ou remota com CORS) e chama de volta */
 function comImagem(url: string, cb: (img: HTMLImageElement) => void): void {
@@ -341,6 +360,7 @@ export function PainelPropriedades() {
   const selecionados = useEditorStore((s) => s.selecionados)
   const atualizarElementos = useEditorStore((s) => s.atualizarElementos)
   const definirCorFundo = useEditorStore((s) => s.definirCorFundo)
+  const atualizarPagina = useEditorStore((s) => s.atualizarPagina)
   const duplicarSelecionados = useEditorStore((s) => s.duplicarSelecionados)
   const removerSelecionados = useEditorStore((s) => s.removerSelecionados)
   const alinharSelecionados = useEditorStore((s) => s.alinharSelecionados)
@@ -484,6 +504,35 @@ export function PainelPropriedades() {
                 })}
               </div>
             </Secao>
+
+            <Secao titulo="Apresentação (esta página)">
+              <label className="block">
+                <span className="rotulo-campo">Transição ao entrar</span>
+                <select
+                  value={pagina.transicao}
+                  onChange={(evento) =>
+                    atualizarPagina(pagina.id, {
+                      transicao: evento.target.value as TransicaoSlide,
+                    })
+                  }
+                  className="campo-texto"
+                >
+                  {TRANSICOES.map((t) => (
+                    <option key={t.valor} value={t.valor}>{t.nome}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="rotulo-campo">Notas do apresentador</span>
+                <textarea
+                  value={pagina.notas}
+                  onChange={(evento) => atualizarPagina(pagina.id, { notas: evento.target.value })}
+                  rows={3}
+                  placeholder="Anotações visíveis só no modo apresentador…"
+                  className="campo-texto resize-y rolagem-fina"
+                />
+              </label>
+            </Secao>
           </>
         )}
 
@@ -555,6 +604,51 @@ export function PainelPropriedades() {
                   ))}
                 </select>
               </label>
+              <label className="block">
+                <span className="rotulo-campo">Animação de entrada (apresentação)</span>
+                <select
+                  value={elementoUnico.animacao.tipo}
+                  onChange={(evento) =>
+                    atualizarElementos([elementoUnico.id], {
+                      animacao: {
+                        ...elementoUnico.animacao,
+                        tipo: evento.target.value as TipoAnimacao,
+                      },
+                    })
+                  }
+                  className="campo-texto"
+                >
+                  {ANIMACOES.map((a) => (
+                    <option key={a.valor} value={a.valor}>{a.nome}</option>
+                  ))}
+                </select>
+              </label>
+              {elementoUnico.animacao.tipo !== 'nenhuma' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <CampoNumero
+                    rotulo="Atraso (ms)"
+                    valor={elementoUnico.animacao.atraso}
+                    passo={50}
+                    minimo={0}
+                    aoMudar={(valor) =>
+                      atualizarElementos([elementoUnico.id], {
+                        animacao: { ...elementoUnico.animacao, atraso: Math.max(0, valor) },
+                      })
+                    }
+                  />
+                  <CampoNumero
+                    rotulo="Duração (ms)"
+                    valor={elementoUnico.animacao.duracao}
+                    passo={50}
+                    minimo={100}
+                    aoMudar={(valor) =>
+                      atualizarElementos([elementoUnico.id], {
+                        animacao: { ...elementoUnico.animacao, duracao: Math.max(100, valor) },
+                      })
+                    }
+                  />
+                </div>
+              )}
             </Secao>
 
             {/* Texto */}

@@ -8,12 +8,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
+import { usePlanoStore } from '../../estado/usePlanoStore'
+import { recursoLiberado } from '../../dados/planos'
 import {
   baixarDataUrl,
   exportarDataUrl,
   nomeArquivoExportacao,
   type FormatoExportacao,
 } from '../../nucleo/exportacao'
+import { exportarPdf, exportarPptx, exportarSvg } from '../../nucleo/exportadores/documento'
 
 interface Props {
   temaEscuro: boolean
@@ -34,6 +37,8 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
   const desfazer = useEditorStore((s) => s.desfazer)
   const refazer = useEditorStore((s) => s.refazer)
   const definirZoom = useEditorStore((s) => s.definirZoom)
+  const iniciarApresentacao = useEditorStore((s) => s.iniciarApresentacao)
+  const plano = usePlanoStore((s) => s.plano)
 
   // Nome em edição inline (espelha o nome do projeto)
   const [nomeLocal, setNomeLocal] = useState(projeto?.nome ?? '')
@@ -41,6 +46,7 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
   const [menuAberto, setMenuAberto] = useState(false)
   const [formato, setFormato] = useState<FormatoExportacao>('png')
   const [escala, setEscala] = useState(1)
+  const [exportando, setExportando] = useState(false)
 
   const refMenu = useRef<HTMLDivElement>(null)
 
@@ -74,6 +80,19 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
       baixarDataUrl(dataUrl, nomeArquivoExportacao(projeto.nome, formato))
     }
     setMenuAberto(false)
+  }
+
+  // Exportações de documento (PDF/PPTX percorrem todas as páginas)
+  const exportarDocumento = async (tipo: 'pdf' | 'pptx' | 'svg') => {
+    setExportando(true)
+    try {
+      if (tipo === 'pdf') await exportarPdf(projeto.nome)
+      else if (tipo === 'pptx') await exportarPptx(projeto.nome)
+      else exportarSvg(projeto.nome)
+    } finally {
+      setExportando(false)
+      setMenuAberto(false)
+    }
   }
 
   // Texto discreto do indicador de auto-save
@@ -207,18 +226,18 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
         {temaEscuro ? '☀️' : '🌙'}
       </button>
 
-      {/* Ações futuras (desabilitadas) */}
+      {/* Apresentar (modo apresentação) */}
       <button
+        onClick={iniciarApresentacao}
         className="botao-secundario hidden lg:inline-flex"
-        disabled
-        title="Em breve (fase futura)"
+        title="Iniciar apresentação"
       >
-        Apresentar
+        ▶ Apresentar
       </button>
       <button
         className="botao-secundario hidden lg:inline-flex"
         disabled
-        title="Em breve (fase futura)"
+        title="Colaboração — em breve (Fase 5)"
       >
         Compartilhar
       </button>
@@ -267,8 +286,41 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
             </div>
 
             <button onClick={executarDownload} className="botao-primario w-full">
-              Baixar {formato.toUpperCase()}
+              Baixar {formato.toUpperCase()} (página atual)
             </button>
+
+            {/* Exportações de documento */}
+            <div className="my-3 border-t border-superficie-200 dark:border-superficie-800" />
+            <p className="rotulo-campo">Documento</p>
+            <div className="space-y-2">
+              <button
+                onClick={() => exportarDocumento('pdf')}
+                disabled={exportando}
+                className="botao-secundario w-full disabled:opacity-60"
+              >
+                📄 PDF (todas as páginas)
+              </button>
+              <button
+                onClick={() => exportarDocumento('pptx')}
+                disabled={exportando}
+                className="botao-secundario w-full disabled:opacity-60"
+              >
+                📊 PPTX (apresentação)
+              </button>
+              <button
+                onClick={() => recursoLiberado('export-svg', plano) && exportarDocumento('svg')}
+                disabled={exportando || !recursoLiberado('export-svg', plano)}
+                className="botao-secundario w-full disabled:opacity-60"
+                title={recursoLiberado('export-svg', plano) ? 'Vetor da página atual' : 'Disponível no plano Pro'}
+              >
+                {recursoLiberado('export-svg', plano) ? '◆ SVG (página atual)' : '🔒 SVG (Pro)'}
+              </button>
+              {exportando && (
+                <p className="text-center text-xs text-superficie-500 dark:text-superficie-400">
+                  Exportando…
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>

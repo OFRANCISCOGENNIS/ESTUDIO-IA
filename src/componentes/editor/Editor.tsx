@@ -5,6 +5,8 @@
 // =============================================================
 
 import { useAtalhosTeclado } from '../../hooks/useAtalhosTeclado'
+import { useEditorStore } from '../../estado/useEditorStore'
+import { ModoApresentacao } from '../apresentacao/ModoApresentacao'
 import { BarraFerramentas } from './BarraFerramentas'
 import { BarraPaginas } from './BarraPaginas'
 import { BarraSuperior } from './BarraSuperior'
@@ -19,6 +21,7 @@ interface Props {
 
 export function Editor({ temaEscuro, aoAlternarTema }: Props) {
   useAtalhosTeclado()
+  const apresentando = useEditorStore((s) => s.apresentando)
 
   return (
     <div className="flex h-screen flex-col bg-superficie-100 dark:bg-superficie-950">
@@ -40,6 +43,7 @@ export function Editor({ temaEscuro, aoAlternarTema }: Props) {
           </div>
         </aside>
       </div>
+      {apresentando && <ModoApresentacao />}
     </div>
   )
 }

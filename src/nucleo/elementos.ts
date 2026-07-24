@@ -7,6 +7,7 @@
 import { nanoid } from 'nanoid'
 import {
   AJUSTES_NEUTROS,
+  ANIMACAO_PADRAO,
   Elemento,
   ElementoForma,
   ElementoImagem,
@@ -33,6 +34,7 @@ const basePadrao = () => ({
   visivel: true,
   bloqueado: false,
   mistura: 'normal' as const,
+  animacao: { ...ANIMACAO_PADRAO },
 })
 
 export function criarForma(

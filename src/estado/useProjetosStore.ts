@@ -78,7 +78,9 @@ export const useProjetosStore = create<EstadoProjetos>((set, get) => ({
       nome,
       larguraCanvas: largura,
       alturaCanvas: altura,
-      paginas: [{ id: 'pagina-1', nome: 'Página 1', corFundo, elementos }],
+      paginas: [
+        { id: 'pagina-1', nome: 'Página 1', corFundo, elementos, notas: '', transicao: 'fade' },
+      ],
       criadoEm: agora,
       atualizadoEm: agora,
     }

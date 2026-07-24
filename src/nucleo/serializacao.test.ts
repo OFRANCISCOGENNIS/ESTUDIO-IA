@@ -6,7 +6,9 @@
 
 import { describe, it, expect } from 'vitest'
 import { serializarProjeto, desserializarProjeto } from './serializacao'
-import { AJUSTES_NEUTROS, Projeto, VERSAO_ESQUEMA_ATUAL } from '../tipos/projeto'
+import { AJUSTES_NEUTROS, ANIMACAO_PADRAO, Projeto, VERSAO_ESQUEMA_ATUAL } from '../tipos/projeto'
+
+const anim = () => ({ ...ANIMACAO_PADRAO })
 
 describe('serializacao', () => {
   it('(a) round-trip preserva os campos essenciais de todos os tipos de elemento', () => {
@@ -21,6 +23,8 @@ describe('serializacao', () => {
           id: 'pagina-1',
           nome: 'Página 1',
           corFundo: '#101820',
+          notas: '',
+          transicao: 'fade',
           elementos: [
             {
               id: 'txt-1',
@@ -33,6 +37,7 @@ describe('serializacao', () => {
               visivel: true,
               bloqueado: false,
               mistura: 'normal',
+              animacao: anim(),
               texto: 'Olá',
               fonte: 'Inter',
               tamanhoFonte: 48,
@@ -56,6 +61,7 @@ describe('serializacao', () => {
               visivel: true,
               bloqueado: false,
               mistura: 'multiply',
+              animacao: anim(),
               largura: 300,
               altura: 150,
               preenchimento: '#7c4dff',
@@ -83,6 +89,7 @@ describe('serializacao', () => {
               visivel: false,
               bloqueado: true,
               mistura: 'screen',
+              animacao: anim(),
               url: 'https://exemplo/img.png',
               largura: 200,
               altura: 120,
@@ -103,6 +110,7 @@ describe('serializacao', () => {
               visivel: true,
               bloqueado: false,
               mistura: 'normal',
+              animacao: anim(),
               pontos: [0, 0, 200, 0],
               cor: '#ff0000',
               espessura: 3,

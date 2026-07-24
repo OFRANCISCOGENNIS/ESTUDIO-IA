@@ -1,6 +1,6 @@
 # DesignStudio Pro
 
-![status](https://img.shields.io/badge/status-Fase%203%20entregue-7c4dff)
+![status](https://img.shields.io/badge/status-Fase%204%20entregue-7c4dff)
 ![versão](https://img.shields.io/badge/versão-0.1.0-blue)
 ![stack](https://img.shields.io/badge/React%2018-TypeScript-3178c6)
 ![licença](https://img.shields.io/badge/licença-proprietária-lightgrey)
@@ -18,12 +18,11 @@ próprio navegador e podem ser abertos, editados e exportados a qualquer momento
 
 ## Status do projeto
 
-**Fases 1, 2 e 3 — entregues.** O editor é totalmente funcional para criar peças
-de design do zero ou a partir de templates (Fase 1); com **edição de imagem**
-(filtros, ajustes, máscaras), **gradientes**, **mesclagem** e **múltiplas
-páginas** (Fase 2); e agora com **IA integrada** (texto para design, Magic Write,
-remoção de fundo, redimensionamento mágico, paleta automática), **Brand Kit** e
-**feature flags por plano** (Fase 3).
+**Fases 1 a 4 — entregues.** O editor é totalmente funcional para criar peças
+de design (Fase 1); com **edição de imagem**, **gradientes**, **mesclagem** e
+**múltiplas páginas** (Fase 2); **IA integrada**, **Brand Kit** e **planos**
+(Fase 3); e agora com **modo apresentação** (transições, animações de elemento,
+modo apresentador) e **exportação para PDF, PPTX e SVG** (Fase 4).
 
 ### Roadmap
 
@@ -32,7 +31,7 @@ remoção de fundo, redimensionamento mágico, paleta automática), **Brand Kit*
 | **1** | Editor (MVP) | ✅ Canvas, camadas, texto, formas, imagens, templates, export, auto-save |
 | **2** | Edição de imagem | ✅ Filtros (20+), ajustes de cor, máscaras, gradientes, mesclagem, múltiplas páginas |
 | **3** | Inteligência artificial | ✅ Texto→design, Magic Write, remoção de fundo, redimensionamento mágico, paleta automática, Brand Kit, planos |
-| **4** | Apresentação & movimento | Modo apresentação, transições e animações de elementos |
+| **4** | Apresentação & movimento | ✅ Modo apresentação, transições, animações de entrada por elemento, export PDF/PPTX/SVG |
 | **5** | Colaboração | Edição multiusuário em tempo real, comentários e permissões |
 | **6** | Criação avançada | Pen tool, tipografia criativa, gráficos/infográficos e PWA offline |
 
@@ -111,6 +110,27 @@ real (ex.: Claude) via _adapter pattern_, sem alterar a interface.
 
 ---
 
+## Recursos da Fase 4 (apresentação e exportação)
+
+- **Modo apresentação** em tela cheia: cada página vira um slide, com navegação
+  por teclado (setas, espaço, `Esc`) e transições configuráveis por slide
+  (**fade, deslizar, zoom**).
+- **Modo apresentador**: cronômetro, prévia do próximo slide e as **notas** do
+  slide atual, tudo em um painel lateral (tecla `P`).
+- **Animações de entrada por elemento** (**fade, rise, pan, tumble**) com atraso
+  e duração ajustáveis, tocadas ao entrar no slide. Os slides usam o **mesmo
+  renderizador Konva** do editor — o que você vê é o que se apresenta.
+- **Exportação de documento**:
+  - **PDF** (todas as páginas) — captura fiel via Konva, uma página por slide;
+  - **PPTX** (apresentação) — gerador OpenXML próprio, uma imagem por slide;
+  - **SVG** (página atual) — saída **vetorial** a partir do modelo (formas,
+    texto, gradientes, máscaras), recurso do plano Pro.
+
+Os geradores de PDF, PPTX (ZIP OOXML) e SVG são implementados **do zero, sem
+bibliotecas externas**, e são puros/testáveis.
+
+---
+
 ## Stack
 
 - **React 18** + **TypeScript** (modo `strict`)
@@ -161,8 +181,9 @@ src/
 │  ├─ exportacao.ts     # Exportar/baixar PNG e JPG
 │  ├─ filtros.ts        # Presets, ajustes e filtros de pixel (puro, testável)
 │  ├─ historico.ts      # Pilha de undo/redo por snapshots
-│  ├─ serializacao.ts   # JSON versionado + migração de esquema (v1→v2)
-│  └─ ia/               # IA: adapter, adaptador local, paleta, redimensionar
+│  ├─ serializacao.ts   # JSON versionado + migração de esquema (v1→v2→v3)
+│  ├─ ia/               # IA: adapter, adaptador local, paleta, redimensionar
+│  └─ exportadores/     # PDF, PPTX (ZIP OOXML), SVG e orquestração
 ├─ estado/         # Stores Zustand
 │  ├─ useEditorStore.ts     # Estado do editor, páginas e auto-save
 │  ├─ usePaginaAtiva.ts     # Hook da página ativa
@@ -172,7 +193,8 @@ src/
 ├─ dados/          # Conteúdo pronto (templates, fontes, galeria, predefinições, planos)
 ├─ componentes/    # Interface
 │  ├─ dashboard/       # Tela inicial e projetos recentes
-│  └─ editor/          # Canvas, barras, painéis e overlays
+│  ├─ editor/          # Canvas, barras, painéis e overlays
+│  └─ apresentacao/    # Modo apresentação (palco + apresentador)
 ├─ utilitarios/    # Imagem (compressão), tempo (debounce/datas) e helpers
 ├─ hooks/          # useAtalhosTeclado e outros hooks de UI
 ├─ styles/         # CSS global e design system (Tailwind)
@@ -248,4 +270,4 @@ DesignStudio Pro é planejado em três planos, com liberação de recursos por
 
 ---
 
-<sub>DesignStudio Pro — Fases 1, 2 e 3 entregues. Feito com React, TypeScript e muito café. ☕</sub>
+<sub>DesignStudio Pro — Fases 1 a 4 entregues. Feito com React, TypeScript e muito café. ☕</sub>

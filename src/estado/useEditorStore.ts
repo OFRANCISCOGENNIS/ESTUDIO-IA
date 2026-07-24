@@ -77,6 +77,15 @@ interface EstadoEditor {
   removerPagina: (id: string) => void
   selecionarPagina: (id: string) => void
   renomearPagina: (id: string, nome: string) => void
+  atualizarPagina: (
+    id: string,
+    mudancas: Partial<Pick<Pagina, 'nome' | 'notas' | 'transicao'>>,
+  ) => void
+
+  // ---- Apresentação ----
+  apresentando: boolean
+  iniciarApresentacao: () => void
+  sairApresentacao: () => void
 
   desfazer: () => void
   refazer: () => void
@@ -429,6 +438,8 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
         nome: `Página ${projeto.paginas.length + 1}`,
         corFundo: '#ffffff',
         elementos: [],
+        notas: '',
+        transicao: 'fade',
       }
       historico.registrar(snapshotDe(projeto))
       atualizarFlagsHistorico()
@@ -451,6 +462,8 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
         nome: `${original.nome} (cópia)`,
         corFundo: original.corFundo,
         elementos: clonarElementosParaPagina(original.elementos),
+        notas: original.notas,
+        transicao: original.transicao,
       }
       historico.registrar(snapshotDe(projeto))
       atualizarFlagsHistorico()
@@ -491,6 +504,18 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
       set({ projeto: { ...projeto, paginas } })
       agendarSalvamento()
     },
+
+    atualizarPagina: (id, mudancas) => {
+      const { projeto } = get()
+      if (!projeto) return
+      const paginas = projeto.paginas.map((p) => (p.id === id ? { ...p, ...mudancas } : p))
+      set({ projeto: { ...projeto, paginas } })
+      agendarSalvamento()
+    },
+
+    apresentando: false,
+    iniciarApresentacao: () => set({ apresentando: true }),
+    sairApresentacao: () => set({ apresentando: false }),
 
     desfazer: () => {
       const { projeto } = get()

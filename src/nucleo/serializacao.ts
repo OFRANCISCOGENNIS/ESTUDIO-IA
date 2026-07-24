@@ -8,12 +8,16 @@
 
 import {
   AJUSTES_NEUTROS,
+  AnimacaoEntrada,
+  ANIMACAO_PADRAO,
   Elemento,
   FormatoMascara,
   Gradiente,
   ModoMistura,
   Pagina,
   Projeto,
+  TipoAnimacao,
+  TransicaoSlide,
   VERSAO_ESQUEMA_ATUAL,
 } from '../tipos/projeto'
 
@@ -75,7 +79,14 @@ function normalizarProjeto(bruto: Record<string, unknown>): Projeto {
     .filter((p): p is Pagina => p !== null)
   // Todo projeto precisa de ao menos uma página
   if (paginas.length === 0) {
-    paginas.push({ id: 'pagina-1', nome: 'Página 1', corFundo: '#ffffff', elementos: [] })
+    paginas.push({
+      id: 'pagina-1',
+      nome: 'Página 1',
+      corFundo: '#ffffff',
+      elementos: [],
+      notas: '',
+      transicao: 'fade',
+    })
   }
   const agora = new Date().toISOString()
   return {
@@ -91,6 +102,8 @@ function normalizarProjeto(bruto: Record<string, unknown>): Projeto {
   }
 }
 
+const TRANSICOES: TransicaoSlide[] = ['nenhuma', 'fade', 'slide', 'zoom']
+
 function normalizarPagina(bruto: Record<string, unknown>, indice: number): Pagina | null {
   if (typeof bruto !== 'object' || bruto === null) return null
   const elementosBrutos = Array.isArray(bruto.elementos) ? bruto.elementos : []
@@ -101,6 +114,10 @@ function normalizarPagina(bruto: Record<string, unknown>, indice: number): Pagin
     elementos: elementosBrutos
       .map((e) => normalizarElemento(e as Record<string, unknown>))
       .filter((e): e is Elemento => e !== null),
+    notas: typeof bruto.notas === 'string' ? bruto.notas : '',
+    transicao: TRANSICOES.includes(bruto.transicao as TransicaoSlide)
+      ? (bruto.transicao as TransicaoSlide)
+      : 'fade',
   }
 }
 
@@ -118,6 +135,7 @@ function normalizarElemento(bruto: Record<string, unknown>): Elemento | null {
     visivel: bruto.visivel !== false,
     bloqueado: bruto.bloqueado === true,
     mistura: normalizarMistura(bruto.mistura),
+    animacao: normalizarAnimacao(bruto.animacao),
   }
   switch (tipo) {
     case 'retangulo':
@@ -190,6 +208,18 @@ const MODOS_MISTURA: ModoMistura[] = [
 
 function normalizarMistura(valor: unknown): ModoMistura {
   return MODOS_MISTURA.includes(valor as ModoMistura) ? (valor as ModoMistura) : 'normal'
+}
+
+const TIPOS_ANIMACAO: TipoAnimacao[] = ['nenhuma', 'fade', 'rise', 'pan', 'tumble']
+
+function normalizarAnimacao(valor: unknown): AnimacaoEntrada {
+  if (typeof valor !== 'object' || valor === null) return { ...ANIMACAO_PADRAO }
+  const v = valor as Record<string, unknown>
+  return {
+    tipo: TIPOS_ANIMACAO.includes(v.tipo as TipoAnimacao) ? (v.tipo as TipoAnimacao) : 'nenhuma',
+    atraso: numeroOu(v.atraso, 0),
+    duracao: numeroOu(v.duracao, 500),
+  }
 }
 
 const MASCARAS: FormatoMascara[] = [

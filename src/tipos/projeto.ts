@@ -7,7 +7,7 @@
 // =============================================================
 
 /** Versão atual do esquema de projeto. Incrementar ao mudar a estrutura. */
-export const VERSAO_ESQUEMA_ATUAL = 2
+export const VERSAO_ESQUEMA_ATUAL = 3
 
 export type TipoElemento =
   | 'texto'
@@ -33,6 +33,19 @@ export type ModoMistura =
   | 'difference'
   | 'exclusion'
 
+/** Animação de entrada de um elemento no modo apresentação */
+export type TipoAnimacao = 'nenhuma' | 'fade' | 'rise' | 'pan' | 'tumble'
+
+export interface AnimacaoEntrada {
+  tipo: TipoAnimacao
+  /** Atraso antes de iniciar (ms) */
+  atraso: number
+  /** Duração da animação (ms) */
+  duracao: number
+}
+
+export const ANIMACAO_PADRAO: AnimacaoEntrada = { tipo: 'nenhuma', atraso: 0, duracao: 500 }
+
 /** Propriedades comuns a todos os elementos do canvas */
 export interface ElementoBase {
   id: string
@@ -49,6 +62,8 @@ export interface ElementoBase {
   bloqueado: boolean
   /** Modo de mesclagem com as camadas abaixo */
   mistura: ModoMistura
+  /** Animação de entrada na apresentação */
+  animacao: AnimacaoEntrada
 }
 
 /** Gradiente de preenchimento (linear ou radial) com paradas de cor */
@@ -160,12 +175,19 @@ export type Elemento =
   | ElementoImagem
   | ElementoLinha
 
-/** Uma página/prancheta dentro de um projeto */
+/** Transição ao entrar em um slide na apresentação */
+export type TransicaoSlide = 'nenhuma' | 'fade' | 'slide' | 'zoom'
+
+/** Uma página/prancheta dentro de um projeto (também é um slide) */
 export interface Pagina {
   id: string
   nome: string
   corFundo: string
   elementos: Elemento[]
+  /** Notas do apresentador (modo apresentador) */
+  notas: string
+  /** Transição ao entrar neste slide */
+  transicao: TransicaoSlide
 }
 
 /** Documento de projeto completo, serializável em JSON */

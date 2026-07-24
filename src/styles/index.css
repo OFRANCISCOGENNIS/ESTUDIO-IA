@@ -47,3 +47,26 @@ body {
     @apply mb-1 block text-xs font-medium text-superficie-700 dark:text-superficie-200;
   }
 }
+
+/* Transições entre slides no modo apresentação */
+.transicao-fade {
+  animation: ap-fade 420ms ease both;
+}
+.transicao-slide {
+  animation: ap-slide 420ms ease both;
+}
+.transicao-zoom {
+  animation: ap-zoom 420ms ease both;
+}
+@keyframes ap-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ap-slide {
+  from { opacity: 0; transform: translateX(6%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes ap-zoom {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
