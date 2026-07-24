@@ -7,11 +7,14 @@
 // Não depende do Konva — só lê/escreve no store.
 // =============================================================
 
-import { type ReactNode } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
+import { usePlanoStore } from '../../estado/usePlanoStore'
 import { FONTES } from '../../dados/fontes'
+import { recursoLiberado } from '../../dados/planos'
 import { FILTROS } from '../../nucleo/filtros'
+import { obterAdaptadorIA } from '../../nucleo/ia/registro'
 import {
   AJUSTES_NEUTROS,
   AjustesImagem,
@@ -19,6 +22,15 @@ import {
   Gradiente,
   ModoMistura,
 } from '../../tipos/projeto'
+
+/** Carrega um HTMLImageElement (data URL ou remota com CORS) e chama de volta */
+function comImagem(url: string, cb: (img: HTMLImageElement) => void): void {
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.onload = () => cb(img)
+  img.onerror = () => console.error('Falha ao carregar imagem para IA')
+  img.src = url
+}
 
 /** Cores rápidas para o fundo do canvas (paleta de acesso ágil) */
 const PALETA_RAPIDA = [
@@ -332,6 +344,18 @@ export function PainelPropriedades() {
   const duplicarSelecionados = useEditorStore((s) => s.duplicarSelecionados)
   const removerSelecionados = useEditorStore((s) => s.removerSelecionados)
   const alinharSelecionados = useEditorStore((s) => s.alinharSelecionados)
+  const plano = usePlanoStore((s) => s.plano)
+
+  // Estado dos recursos de IA por imagem/texto selecionado
+  const [paletaExtraida, setPaletaExtraida] = useState<string[]>([])
+  const [processandoIA, setProcessandoIA] = useState(false)
+  const [rewriteOpcoes, setRewriteOpcoes] = useState<string[]>([])
+  const idSelecionado = selecionados.length === 1 ? selecionados[0] : null
+  // Limpa resultados de IA ao trocar de elemento
+  useEffect(() => {
+    setPaletaExtraida([])
+    setRewriteOpcoes([])
+  }, [idSelecionado])
 
   if (!projeto || !pagina) return null
 
@@ -340,6 +364,44 @@ export function PainelPropriedades() {
     selecionados.length === 1
       ? pagina.elementos.find((e) => e.id === selecionados[0])
       : undefined
+
+  // ---- Ações de IA (imagem/texto) ----
+  const removerFundoIA = () => {
+    if (!elementoUnico || elementoUnico.tipo !== 'imagem') return
+    const el = elementoUnico
+    setProcessandoIA(true)
+    comImagem(el.url, async (img) => {
+      try {
+        const url = await obterAdaptadorIA().removerFundo(img)
+        atualizarElementos([el.id], { url, mascara: 'nenhuma' })
+      } finally {
+        setProcessandoIA(false)
+      }
+    })
+  }
+  const extrairPaletaIA = () => {
+    if (!elementoUnico || elementoUnico.tipo !== 'imagem') return
+    const el = elementoUnico
+    setProcessandoIA(true)
+    comImagem(el.url, async (img) => {
+      try {
+        setPaletaExtraida(await obterAdaptadorIA().extrairPaleta(img, 6))
+      } finally {
+        setProcessandoIA(false)
+      }
+    })
+  }
+  const reescreverTextoIA = async () => {
+    if (!elementoUnico || elementoUnico.tipo !== 'texto') return
+    setProcessandoIA(true)
+    try {
+      setRewriteOpcoes(
+        await obterAdaptadorIA().gerarTextos('titulo', elementoUnico.texto, 'descontraido'),
+      )
+    } finally {
+      setProcessandoIA(false)
+    }
+  }
 
   // Cabeçalho contextual conforme o modo
   let titulo = 'Propriedades do canvas'
@@ -630,6 +692,32 @@ export function PainelPropriedades() {
                     }
                   />
                 </div>
+
+                {/* Magic Write: reescrever o texto com IA */}
+                <button
+                  type="button"
+                  onClick={reescreverTextoIA}
+                  disabled={processandoIA}
+                  className="botao-secundario w-full disabled:opacity-50"
+                >
+                  {processandoIA ? 'Gerando…' : '🪄 Reescrever com IA'}
+                </button>
+                {rewriteOpcoes.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {rewriteOpcoes.map((op, i) => (
+                      <li key={i}>
+                        <button
+                          type="button"
+                          onClick={() => atualizarElementos([elementoUnico.id], { texto: op })}
+                          className="w-full rounded-lg border border-superficie-200 px-3 py-2 text-left text-sm text-superficie-800 transition hover:border-primaria-300 hover:bg-primaria-50 dark:border-superficie-800 dark:text-superficie-200 dark:hover:bg-superficie-800"
+                          title="Aplicar este texto"
+                        >
+                          {op}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Secao>
             )}
 
@@ -885,6 +973,49 @@ export function PainelPropriedades() {
                   >
                     ↺ Restaurar ajustes
                   </button>
+                </Secao>
+
+                {/* IA de imagem */}
+                <Secao titulo="IA">
+                  <button
+                    type="button"
+                    onClick={removerFundoIA}
+                    disabled={processandoIA || !recursoLiberado('remover-fundo', plano)}
+                    className="botao-secundario w-full disabled:opacity-50"
+                    title={
+                      recursoLiberado('remover-fundo', plano)
+                        ? 'Remover o fundo automaticamente'
+                        : 'Disponível no plano Pro'
+                    }
+                  >
+                    {processandoIA
+                      ? 'Processando…'
+                      : recursoLiberado('remover-fundo', plano)
+                        ? '✂️ Remover fundo'
+                        : '🔒 Remover fundo (Pro)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={extrairPaletaIA}
+                    disabled={processandoIA}
+                    className="botao-secundario w-full disabled:opacity-50"
+                  >
+                    🎨 Extrair paleta
+                  </button>
+                  {paletaExtraida.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {paletaExtraida.map((cor) => (
+                        <button
+                          key={cor}
+                          type="button"
+                          onClick={() => definirCorFundo(cor)}
+                          className="h-8 w-8 rounded-lg border border-superficie-200 transition hover:scale-110 dark:border-superficie-700"
+                          style={{ backgroundColor: cor }}
+                          title={`Usar ${cor} no fundo`}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </Secao>
               </>
             )}

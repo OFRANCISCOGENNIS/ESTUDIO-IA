@@ -14,9 +14,11 @@ import { PARES_FONTES, ParFonte } from '../../dados/fontes'
 import { FOTOS, ICONES, ItemGaleria, STICKERS } from '../../dados/galeria'
 import { carregarArquivoImagem, ImagemCarregada } from '../../utilitarios/imagem'
 import { tempoRelativo } from '../../utilitarios/tempo'
+import { PainelIA } from './PainelIA'
+import { PainelMarca } from './PainelMarca'
 
 /** Identificadores das abas da trilha lateral */
-type Aba = 'Templates' | 'Elementos' | 'Texto' | 'Uploads' | 'Fotos' | 'Projetos' | 'Apps'
+type Aba = 'Templates' | 'Elementos' | 'Texto' | 'Uploads' | 'Fotos' | 'IA' | 'Marca' | 'Projetos' | 'Apps'
 
 /** Abas exibidas na trilha, em ordem */
 const ABAS: { id: Aba; icone: string }[] = [
@@ -25,6 +27,8 @@ const ABAS: { id: Aba; icone: string }[] = [
   { id: 'Texto', icone: 'T' },
   { id: 'Uploads', icone: '⬆️' },
   { id: 'Fotos', icone: '🖼️' },
+  { id: 'IA', icone: '✨' },
+  { id: 'Marca', icone: '🎯' },
   { id: 'Projetos', icone: '📁' },
   { id: 'Apps', icone: '🧩' },
 ]
@@ -386,6 +390,12 @@ export function BarraFerramentas() {
             </div>
           </div>
         )
+
+      case 'IA':
+        return <PainelIA />
+
+      case 'Marca':
+        return <PainelMarca />
 
       case 'Projetos':
         return (

@@ -10,6 +10,7 @@ import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import { Historico } from '../nucleo/historico'
 import { clonarElemento } from '../nucleo/elementos'
+import { redimensionarElementos } from '../nucleo/ia/redimensionar'
 import { exportarDataUrl } from '../nucleo/exportacao'
 import { debounce } from '../utilitarios/tempo'
 import { Elemento, Ferramenta, Pagina, Projeto } from '../tipos/projeto'
@@ -67,6 +68,9 @@ interface EstadoEditor {
   ) => void
   definirCorFundo: (cor: string) => void
 
+  /** Redimensionamento mágico: novo tamanho de canvas + reflow das páginas */
+  redimensionarProjeto: (largura: number, altura: number) => void
+
   // ---- Páginas ----
   adicionarPagina: () => void
   duplicarPagina: (id: string) => void
@@ -84,9 +88,24 @@ interface EstadoEditor {
 const historico = new Historico()
 let areaTransferencia: Elemento[] = []
 
-/** Snapshot do histórico: todas as páginas (cobre add/remover/reordenar) */
+/** Estrutura do snapshot de histórico (páginas + tamanho do canvas) */
+interface SnapshotProjeto {
+  paginas: Pagina[]
+  larguraCanvas: number
+  alturaCanvas: number
+}
+
+/**
+ * Snapshot do histórico: páginas + tamanho do canvas. Inclui o tamanho
+ * para que o redimensionamento mágico também seja desfazível.
+ */
 function snapshotDe(projeto: Projeto): string {
-  return JSON.stringify(projeto.paginas)
+  const s: SnapshotProjeto = {
+    paginas: projeto.paginas,
+    larguraCanvas: projeto.larguraCanvas,
+    alturaCanvas: projeto.alturaCanvas,
+  }
+  return JSON.stringify(s)
 }
 
 /** Índice e objeto da página ativa (ou -1/null) */
@@ -378,6 +397,29 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
       get().aplicarAlteracao((atual) => ({ ...atual, corFundo: cor }))
     },
 
+    redimensionarProjeto: (largura, altura) => {
+      const { projeto } = get()
+      if (!projeto || largura < 1 || altura < 1) return
+      if (largura === projeto.larguraCanvas && altura === projeto.alturaCanvas) return
+      historico.registrar(snapshotDe(projeto))
+      atualizarFlagsHistorico()
+      const paginas = projeto.paginas.map((p) => ({
+        ...p,
+        elementos: redimensionarElementos(
+          p.elementos,
+          projeto.larguraCanvas,
+          projeto.alturaCanvas,
+          largura,
+          altura,
+        ),
+      }))
+      set({
+        projeto: { ...projeto, larguraCanvas: largura, alturaCanvas: altura, paginas },
+        selecionados: [],
+      })
+      agendarSalvamento()
+    },
+
     // ---- Páginas ----
     adicionarPagina: () => {
       const { projeto } = get()
@@ -469,16 +511,22 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     salvarAgora: persistir,
   }
 
-  /** Restaura um snapshot de páginas (undo/redo) preservando página ativa */
+  /** Restaura um snapshot (undo/redo) preservando a página ativa */
   function aplicarSnapshotPaginas(snapshot: string) {
     const { projeto, paginaAtivaId, selecionados } = get()
     if (!projeto) return
-    const paginas = JSON.parse(snapshot) as Pagina[]
+    const dados = JSON.parse(snapshot) as SnapshotProjeto
+    const paginas = dados.paginas
     const aindaExiste = paginas.some((p) => p.id === paginaAtivaId)
     const ativo = aindaExiste ? paginaAtivaId : paginas[0]?.id ?? ''
     const idsValidos = paginas.find((p) => p.id === ativo)?.elementos.map((e) => e.id) ?? []
     set({
-      projeto: { ...projeto, paginas },
+      projeto: {
+        ...projeto,
+        paginas,
+        larguraCanvas: dados.larguraCanvas,
+        alturaCanvas: dados.alturaCanvas,
+      },
       paginaAtivaId: ativo,
       selecionados: selecionados.filter((id) => idsValidos.includes(id)),
     })
