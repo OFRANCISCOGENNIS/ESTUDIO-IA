@@ -6,6 +6,7 @@
 
 import { nanoid } from 'nanoid'
 import {
+  AJUSTES_NEUTROS,
   Elemento,
   ElementoForma,
   ElementoImagem,
@@ -31,6 +32,7 @@ const basePadrao = () => ({
   opacidade: 1,
   visivel: true,
   bloqueado: false,
+  mistura: 'normal' as const,
 })
 
 export function criarForma(
@@ -106,6 +108,10 @@ export function criarImagem(
     largura,
     altura,
     raioCanto: 0,
+    ajustes: { ...AJUSTES_NEUTROS },
+    filtro: 'nenhum',
+    intensidadeFiltro: 1,
+    mascara: 'nenhuma',
     ...extras,
   }
 }

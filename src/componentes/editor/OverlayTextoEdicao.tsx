@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
+import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 
 interface Props {
   zoom: number
@@ -15,11 +16,11 @@ interface Props {
 }
 
 export function OverlayTextoEdicao({ zoom, deslocamento, aoFechar }: Props) {
-  const projeto = useEditorStore((s) => s.projeto)
+  const pagina = usePaginaAtiva()
   const textoEmEdicao = useEditorStore((s) => s.textoEmEdicao)
   const atualizarElementos = useEditorStore((s) => s.atualizarElementos)
 
-  const elemento = projeto?.elementos.find((e) => e.id === textoEmEdicao)
+  const elemento = pagina?.elementos.find((e) => e.id === textoEmEdicao)
   const ehTexto = elemento?.tipo === 'texto' ? elemento : null
 
   const [valor, setValor] = useState(ehTexto?.texto ?? '')

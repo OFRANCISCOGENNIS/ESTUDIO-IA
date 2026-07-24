@@ -1,6 +1,6 @@
 # DesignStudio Pro
 
-![status](https://img.shields.io/badge/status-Fase%201%20(MVP)-7c4dff)
+![status](https://img.shields.io/badge/status-Fase%202%20entregue-7c4dff)
 ![versão](https://img.shields.io/badge/versão-0.1.0-blue)
 ![stack](https://img.shields.io/badge/React%2018-TypeScript-3178c6)
 ![licença](https://img.shields.io/badge/licença-proprietária-lightgrey)
@@ -18,15 +18,18 @@ próprio navegador e podem ser abertos, editados e exportados a qualquer momento
 
 ## Status do projeto
 
-**Fase 1 (MVP) — entregue.** O editor já é totalmente funcional para criar
-peças de design do zero ou a partir de templates, com camadas, texto, formas,
-imagens, exportação e salvamento automático.
+**Fases 1 e 2 — entregues.** O editor é totalmente funcional para criar peças
+de design do zero ou a partir de templates, com camadas, texto, formas, imagens,
+exportação e salvamento automático (Fase 1); e agora com **edição de imagem**
+(filtros, ajustes, máscaras), **gradientes**, **modos de mesclagem** e
+**múltiplas páginas** (Fase 2).
 
-### Roadmap (Fases 2–6)
+### Roadmap
 
-| Fase | Tema | Destaques planejados |
+| Fase | Tema | Situação / destaques |
 |------|------|----------------------|
-| **2** | Edição de imagem | Filtros, ajustes de cor, máscaras, recortes e composição raster |
+| **1** | Editor (MVP) | ✅ Canvas, camadas, texto, formas, imagens, templates, export, auto-save |
+| **2** | Edição de imagem | ✅ Filtros (20+), ajustes de cor, máscaras, gradientes, mesclagem, múltiplas páginas |
 | **3** | Inteligência artificial | Geração de imagem/texto, remoção de fundo e sugestões de layout |
 | **4** | Apresentação & movimento | Modo apresentação, transições e animações de elementos |
 | **5** | Colaboração | Edição multiusuário em tempo real, comentários e permissões |
@@ -61,6 +64,25 @@ imagens, exportação e salvamento automático.
 
 ---
 
+## Recursos da Fase 2 (edição de imagem e composição)
+
+- **Múltiplas páginas / pranchetas** no mesmo projeto: adicionar, duplicar,
+  remover e renomear páginas, todas compartilhando o tamanho do artboard. O
+  `undo/redo` cobre inclusive operações de página.
+- **Filtros predefinidos** (mais de 20, no estilo Instagram: Clarendon, Juno,
+  Moon, Lo-Fi, Vintage…) com **intensidade ajustável**.
+- **Ajustes finos de imagem**: brilho, contraste, saturação, temperatura,
+  nitidez, desfoque e vinheta — aplicados via filtros customizados do Konva em
+  um nó com cache (sem travar a interface).
+- **Máscaras de recorte**: encaixe a imagem em círculo, retângulo arredondado,
+  triângulo, estrela ou coração.
+- **Gradientes** (linear e radial) como preenchimento de formas, com duas
+  paradas de cor e ângulo configurável.
+- **Modos de mesclagem** por camada (multiplicar, divisão, sobrepor, luz suave,
+  diferença e outros) somados à opacidade.
+
+---
+
 ## Stack
 
 - **React 18** + **TypeScript** (modo `strict`)
@@ -81,7 +103,10 @@ imagens, exportação e salvamento automático.
 2. **Projeto serializado em JSON versionado.** Todo projeto carrega um
    `versaoEsquema`. A leitura passa sempre por `desserializarProjeto`, que
    **valida, migra esquemas antigos e preenche padrões** — garantindo
-   retrocompatibilidade à medida que o formato evolui.
+   retrocompatibilidade à medida que o formato evolui. A Fase 2 exercitou isso
+   na prática: a introdução de **múltiplas páginas** subiu o esquema de `1` para
+   `2`, e a migração embrulha automaticamente projetos antigos (página única)
+   na nova estrutura de `paginas`, sem perder nenhum design salvo.
 3. **Histórico por snapshots.** O `undo/redo` guarda snapshots serializados do
    projeto (não deltas), o que torna o comportamento **previsível e confiável** e
    mantém o custo de memória sob controle (capacidade de 100 passos).
@@ -100,14 +125,16 @@ imagens, exportação e salvamento automático.
 
 ```
 src/
-├─ tipos/          # Modelo de dados: Projeto, Elemento, Ferramenta, Predefinicao
+├─ tipos/          # Modelo de dados: Projeto, Pagina, Elemento, AjustesImagem…
 ├─ nucleo/         # Regras de domínio (sem UI)
 │  ├─ elementos.ts      # Fábrica de elementos (formas, texto, imagem, linha)
 │  ├─ exportacao.ts     # Exportar/baixar PNG e JPG
+│  ├─ filtros.ts        # Presets, ajustes e filtros de pixel (puro, testável)
 │  ├─ historico.ts      # Pilha de undo/redo por snapshots
-│  └─ serializacao.ts   # JSON versionado + migração de esquema
+│  └─ serializacao.ts   # JSON versionado + migração de esquema (v1→v2)
 ├─ estado/         # Stores Zustand
-│  ├─ useEditorStore.ts     # Estado do editor + auto-save
+│  ├─ useEditorStore.ts     # Estado do editor, páginas e auto-save
+│  ├─ usePaginaAtiva.ts     # Hook da página ativa
 │  └─ useProjetosStore.ts   # Índice e persistência de projetos
 ├─ dados/          # Conteúdo pronto (templates, fontes, galeria, predefinições)
 ├─ componentes/    # Interface
@@ -187,4 +214,4 @@ DesignStudio Pro é planejado em três planos, com liberação de recursos por
 
 ---
 
-<sub>DesignStudio Pro — Fase 1 (MVP). Feito com React, TypeScript e muito café. ☕</sub>
+<sub>DesignStudio Pro — Fases 1 e 2 entregues. Feito com React, TypeScript e muito café. ☕</sub>

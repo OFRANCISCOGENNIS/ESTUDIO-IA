@@ -1,11 +1,13 @@
 // =============================================================
 // Tipos centrais do DesignStudio Pro
 // O projeto é serializado em JSON versionado (retrocompatível).
-// A ordem do array `elementos` define a ordem Z (índice 0 = fundo).
+// A partir do esquema 2, o projeto tem várias PÁGINAS; dentro de
+// cada página a ordem do array `elementos` define a ordem Z
+// (índice 0 = fundo).
 // =============================================================
 
 /** Versão atual do esquema de projeto. Incrementar ao mudar a estrutura. */
-export const VERSAO_ESQUEMA_ATUAL = 1
+export const VERSAO_ESQUEMA_ATUAL = 2
 
 export type TipoElemento =
   | 'texto'
@@ -15,6 +17,21 @@ export type TipoElemento =
   | 'estrela'
   | 'linha'
   | 'imagem'
+
+/** Modos de mesclagem por camada (globalCompositeOperation do canvas) */
+export type ModoMistura =
+  | 'normal'
+  | 'multiply'
+  | 'screen'
+  | 'overlay'
+  | 'darken'
+  | 'lighten'
+  | 'color-dodge'
+  | 'color-burn'
+  | 'hard-light'
+  | 'soft-light'
+  | 'difference'
+  | 'exclusion'
 
 /** Propriedades comuns a todos os elementos do canvas */
 export interface ElementoBase {
@@ -30,6 +47,17 @@ export interface ElementoBase {
   opacidade: number
   visivel: boolean
   bloqueado: boolean
+  /** Modo de mesclagem com as camadas abaixo */
+  mistura: ModoMistura
+}
+
+/** Gradiente de preenchimento (linear ou radial) com paradas de cor */
+export interface Gradiente {
+  tipo: 'linear' | 'radial'
+  /** Ângulo em graus (apenas linear) */
+  angulo: number
+  /** Paradas de cor ordenadas por deslocamento (0..1) */
+  paradas: { deslocamento: number; cor: string }[]
 }
 
 export interface ElementoForma extends ElementoBase {
@@ -37,6 +65,8 @@ export interface ElementoForma extends ElementoBase {
   largura: number
   altura: number
   preenchimento: string
+  /** Quando presente, substitui o preenchimento sólido por um gradiente */
+  gradiente?: Gradiente
   corBorda: string
   espessuraBorda: number
   /** Raio dos cantos (apenas retângulo) */
@@ -60,6 +90,44 @@ export interface ElementoTexto extends ElementoBase {
   espacamentoLetras: number
 }
 
+/** Ajustes finos de imagem (todos neutros = 0) */
+export interface AjustesImagem {
+  /** -100..100 */
+  brilho: number
+  /** -100..100 */
+  contraste: number
+  /** -100..100 */
+  saturacao: number
+  /** -100 (frio) .. 100 (quente) */
+  temperatura: number
+  /** 0..100 */
+  nitidez: number
+  /** 0..100 (raio do desfoque) */
+  desfoque: number
+  /** 0..100 (escurecimento das bordas) */
+  vinheta: number
+}
+
+/** Ajustes de imagem neutros (nenhum efeito) */
+export const AJUSTES_NEUTROS: AjustesImagem = {
+  brilho: 0,
+  contraste: 0,
+  saturacao: 0,
+  temperatura: 0,
+  nitidez: 0,
+  desfoque: 0,
+  vinheta: 0,
+}
+
+/** Formatos de máscara para recortar imagens */
+export type FormatoMascara =
+  | 'nenhuma'
+  | 'circulo'
+  | 'arredondado'
+  | 'triangulo'
+  | 'estrela'
+  | 'coracao'
+
 export interface ElementoImagem extends ElementoBase {
   tipo: 'imagem'
   /** Data URL ou URL do asset */
@@ -67,6 +135,14 @@ export interface ElementoImagem extends ElementoBase {
   largura: number
   altura: number
   raioCanto: number
+  /** Ajustes manuais de imagem */
+  ajustes: AjustesImagem
+  /** Id do filtro predefinido aplicado ('nenhum' = sem filtro) */
+  filtro: string
+  /** Intensidade do filtro predefinido (0..1) */
+  intensidadeFiltro: number
+  /** Máscara de recorte aplicada à imagem */
+  mascara: FormatoMascara
 }
 
 export interface ElementoLinha extends ElementoBase {
@@ -84,15 +160,23 @@ export type Elemento =
   | ElementoImagem
   | ElementoLinha
 
+/** Uma página/prancheta dentro de um projeto */
+export interface Pagina {
+  id: string
+  nome: string
+  corFundo: string
+  elementos: Elemento[]
+}
+
 /** Documento de projeto completo, serializável em JSON */
 export interface Projeto {
   versaoEsquema: number
   id: string
   nome: string
+  /** Dimensões do artboard, compartilhadas por todas as páginas */
   larguraCanvas: number
   alturaCanvas: number
-  corFundo: string
-  elementos: Elemento[]
+  paginas: Pagina[]
   criadoEm: string
   atualizadoEm: string
   /** Miniatura em data URL para o dashboard */

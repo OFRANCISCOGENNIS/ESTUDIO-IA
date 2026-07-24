@@ -9,7 +9,16 @@
 
 import { type ReactNode } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
+import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 import { FONTES } from '../../dados/fontes'
+import { FILTROS } from '../../nucleo/filtros'
+import {
+  AJUSTES_NEUTROS,
+  AjustesImagem,
+  FormatoMascara,
+  Gradiente,
+  ModoMistura,
+} from '../../tipos/projeto'
 
 /** Cores rápidas para o fundo do canvas (paleta de acesso ágil) */
 const PALETA_RAPIDA = [
@@ -21,6 +30,43 @@ const PALETA_RAPIDA = [
   '#3b82f6',
   '#7c4dff',
   '#ec4899',
+]
+
+/** Modos de mesclagem com rótulos em português */
+const MODOS_MISTURA: { valor: ModoMistura; nome: string }[] = [
+  { valor: 'normal', nome: 'Normal' },
+  { valor: 'multiply', nome: 'Multiplicar' },
+  { valor: 'screen', nome: 'Divisão' },
+  { valor: 'overlay', nome: 'Sobrepor' },
+  { valor: 'darken', nome: 'Escurecer' },
+  { valor: 'lighten', nome: 'Clarear' },
+  { valor: 'color-dodge', nome: 'Subexposição' },
+  { valor: 'color-burn', nome: 'Superexposição' },
+  { valor: 'hard-light', nome: 'Luz intensa' },
+  { valor: 'soft-light', nome: 'Luz suave' },
+  { valor: 'difference', nome: 'Diferença' },
+  { valor: 'exclusion', nome: 'Exclusão' },
+]
+
+/** Máscaras de recorte disponíveis para imagens */
+const MASCARAS: { valor: FormatoMascara; nome: string; icone: string }[] = [
+  { valor: 'nenhuma', nome: 'Nenhuma', icone: '▢' },
+  { valor: 'circulo', nome: 'Círculo', icone: '⬤' },
+  { valor: 'arredondado', nome: 'Arredondado', icone: '▢' },
+  { valor: 'triangulo', nome: 'Triângulo', icone: '▲' },
+  { valor: 'estrela', nome: 'Estrela', icone: '★' },
+  { valor: 'coracao', nome: 'Coração', icone: '♥' },
+]
+
+/** Ajustes de imagem exibidos como sliders (rótulo + faixa) */
+const AJUSTES_UI: { chave: keyof AjustesImagem; rotulo: string; min: number; max: number }[] = [
+  { chave: 'brilho', rotulo: 'Brilho', min: -100, max: 100 },
+  { chave: 'contraste', rotulo: 'Contraste', min: -100, max: 100 },
+  { chave: 'saturacao', rotulo: 'Saturação', min: -100, max: 100 },
+  { chave: 'temperatura', rotulo: 'Temperatura', min: -100, max: 100 },
+  { chave: 'nitidez', rotulo: 'Nitidez', min: 0, max: 100 },
+  { chave: 'desfoque', rotulo: 'Desfoque', min: 0, max: 100 },
+  { chave: 'vinheta', rotulo: 'Vinheta', min: 0, max: 100 },
 ]
 
 /** Botões de alinhamento em lote (rótulo acessível + ícone) */
@@ -187,10 +233,99 @@ function AcoesElemento({
   )
 }
 
+/** Slider genérico com rótulo e leitura numérica */
+function CampoSlider({
+  rotulo,
+  valor,
+  min,
+  max,
+  passo = 1,
+  aoMudar,
+}: {
+  rotulo: string
+  valor: number
+  min: number
+  max: number
+  passo?: number
+  aoMudar: (valor: number) => void
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 flex items-center justify-between">
+        <span className="rotulo-campo mb-0">{rotulo}</span>
+        <span className="text-xs tabular-nums text-superficie-500 dark:text-superficie-400">
+          {Math.round(valor)}
+        </span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={passo}
+        value={valor}
+        onChange={(evento) => aoMudar(parseFloat(evento.target.value))}
+        className="w-full cursor-pointer accent-primaria-500"
+        aria-label={rotulo}
+      />
+    </label>
+  )
+}
+
+/** Editor simples de gradiente (2 paradas + tipo + ângulo) */
+function EditorGradiente({
+  gradiente,
+  aoMudar,
+}: {
+  gradiente: Gradiente
+  aoMudar: (g: Gradiente) => void
+}) {
+  const inicio = gradiente.paradas[0] ?? { deslocamento: 0, cor: '#7c4dff' }
+  const fim = gradiente.paradas[gradiente.paradas.length - 1] ?? { deslocamento: 1, cor: '#ec4899' }
+  const definirParada = (indice: 0 | 1, cor: string) => {
+    const paradas = [
+      { deslocamento: 0, cor: indice === 0 ? cor : inicio.cor },
+      { deslocamento: 1, cor: indice === 1 ? cor : fim.cor },
+    ]
+    aoMudar({ ...gradiente, paradas })
+  }
+  return (
+    <div className="space-y-3 rounded-lg bg-superficie-50 p-3 dark:bg-superficie-850">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => aoMudar({ ...gradiente, tipo: 'linear' })}
+          className={classeToggle(gradiente.tipo === 'linear')}
+        >
+          Linear
+        </button>
+        <button
+          type="button"
+          onClick={() => aoMudar({ ...gradiente, tipo: 'radial' })}
+          className={classeToggle(gradiente.tipo === 'radial')}
+        >
+          Radial
+        </button>
+      </div>
+      <CampoCor rotulo="Cor inicial" valor={inicio.cor} aoMudar={(c) => definirParada(0, c)} />
+      <CampoCor rotulo="Cor final" valor={fim.cor} aoMudar={(c) => definirParada(1, c)} />
+      {gradiente.tipo === 'linear' && (
+        <CampoSlider
+          rotulo="Ângulo"
+          valor={gradiente.angulo}
+          min={0}
+          max={360}
+          aoMudar={(v) => aoMudar({ ...gradiente, angulo: v })}
+        />
+      )}
+    </div>
+  )
+}
+
 // ---- Painel principal -------------------------------------------
 
 export function PainelPropriedades() {
   const projeto = useEditorStore((s) => s.projeto)
+  const pagina = usePaginaAtiva()
   const selecionados = useEditorStore((s) => s.selecionados)
   const atualizarElementos = useEditorStore((s) => s.atualizarElementos)
   const definirCorFundo = useEditorStore((s) => s.definirCorFundo)
@@ -198,12 +333,12 @@ export function PainelPropriedades() {
   const removerSelecionados = useEditorStore((s) => s.removerSelecionados)
   const alinharSelecionados = useEditorStore((s) => s.alinharSelecionados)
 
-  if (!projeto) return null
+  if (!projeto || !pagina) return null
 
   // Elemento único (quando houver exatamente um selecionado existente)
   const elementoUnico =
     selecionados.length === 1
-      ? projeto.elementos.find((e) => e.id === selecionados[0])
+      ? pagina.elementos.find((e) => e.id === selecionados[0])
       : undefined
 
   // Cabeçalho contextual conforme o modo
@@ -262,12 +397,12 @@ export function PainelPropriedades() {
             <Secao titulo="Cor de fundo">
               <CampoCor
                 rotulo="Fundo"
-                valor={projeto.corFundo}
+                valor={pagina.corFundo}
                 aoMudar={(valor) => definirCorFundo(valor)}
               />
               <div className="grid grid-cols-8 gap-2">
                 {PALETA_RAPIDA.map((cor) => {
-                  const ativo = projeto.corFundo.toLowerCase() === cor.toLowerCase()
+                  const ativo = pagina.corFundo.toLowerCase() === cor.toLowerCase()
                   return (
                     <button
                       key={cor}
@@ -340,6 +475,24 @@ export function PainelPropriedades() {
                   {elementoUnico.bloqueado ? '🔒 Travado' : '🔓 Livre'}
                 </button>
               </div>
+              <label className="block">
+                <span className="rotulo-campo">Modo de mesclagem</span>
+                <select
+                  value={elementoUnico.mistura}
+                  onChange={(evento) =>
+                    atualizarElementos([elementoUnico.id], {
+                      mistura: evento.target.value as ModoMistura,
+                    })
+                  }
+                  className="campo-texto"
+                >
+                  {MODOS_MISTURA.map((modo) => (
+                    <option key={modo.valor} value={modo.valor}>
+                      {modo.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </Secao>
 
             {/* Texto */}
@@ -505,28 +658,64 @@ export function PainelPropriedades() {
                   />
                 </div>
 
-                {/* Preenchimento (com opção "sem preenchimento") */}
-                <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-superficie-700 dark:text-superficie-200">
-                  <input
-                    type="checkbox"
-                    checked={ehTransparente(elementoUnico.preenchimento)}
-                    onChange={(evento) =>
+                {/* Preenchimento: sólido ou gradiente */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => atualizarElementos([elementoUnico.id], { gradiente: undefined })}
+                    className={classeToggle(!elementoUnico.gradiente)}
+                  >
+                    Sólido
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
                       atualizarElementos([elementoUnico.id], {
-                        preenchimento: evento.target.checked ? 'transparent' : '#7c4dff',
+                        gradiente: elementoUnico.gradiente ?? {
+                          tipo: 'linear',
+                          angulo: 90,
+                          paradas: [
+                            { deslocamento: 0, cor: '#7c4dff' },
+                            { deslocamento: 1, cor: '#ec4899' },
+                          ],
+                        },
                       })
                     }
-                    className="h-4 w-4 rounded accent-primaria-500"
+                    className={classeToggle(!!elementoUnico.gradiente)}
+                  >
+                    Gradiente
+                  </button>
+                </div>
+                {elementoUnico.gradiente ? (
+                  <EditorGradiente
+                    gradiente={elementoUnico.gradiente}
+                    aoMudar={(g) => atualizarElementos([elementoUnico.id], { gradiente: g })}
                   />
-                  Sem preenchimento
-                </label>
-                {!ehTransparente(elementoUnico.preenchimento) && (
-                  <CampoCor
-                    rotulo="Preenchimento"
-                    valor={elementoUnico.preenchimento}
-                    aoMudar={(valor) =>
-                      atualizarElementos([elementoUnico.id], { preenchimento: valor })
-                    }
-                  />
+                ) : (
+                  <>
+                    <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-superficie-700 dark:text-superficie-200">
+                      <input
+                        type="checkbox"
+                        checked={ehTransparente(elementoUnico.preenchimento)}
+                        onChange={(evento) =>
+                          atualizarElementos([elementoUnico.id], {
+                            preenchimento: evento.target.checked ? 'transparent' : '#7c4dff',
+                          })
+                        }
+                        className="h-4 w-4 rounded accent-primaria-500"
+                      />
+                      Sem preenchimento
+                    </label>
+                    {!ehTransparente(elementoUnico.preenchimento) && (
+                      <CampoCor
+                        rotulo="Preenchimento"
+                        valor={elementoUnico.preenchimento}
+                        aoMudar={(valor) =>
+                          atualizarElementos([elementoUnico.id], { preenchimento: valor })
+                        }
+                      />
+                    )}
+                  </>
                 )}
 
                 {/* Borda */}
@@ -574,34 +763,130 @@ export function PainelPropriedades() {
 
             {/* Imagem */}
             {elementoUnico.tipo === 'imagem' && (
-              <Secao titulo="Imagem">
-                <div className="grid grid-cols-2 gap-3">
+              <>
+                <Secao titulo="Imagem">
+                  <div className="grid grid-cols-2 gap-3">
+                    <CampoNumero
+                      rotulo="Largura"
+                      valor={elementoUnico.largura}
+                      minimo={1}
+                      aoMudar={(valor) =>
+                        atualizarElementos([elementoUnico.id], { largura: Math.max(1, valor) })
+                      }
+                    />
+                    <CampoNumero
+                      rotulo="Altura"
+                      valor={elementoUnico.altura}
+                      minimo={1}
+                      aoMudar={(valor) =>
+                        atualizarElementos([elementoUnico.id], { altura: Math.max(1, valor) })
+                      }
+                    />
+                  </div>
                   <CampoNumero
-                    rotulo="Largura"
-                    valor={elementoUnico.largura}
-                    minimo={1}
+                    rotulo="Raio dos cantos"
+                    valor={elementoUnico.raioCanto}
+                    minimo={0}
                     aoMudar={(valor) =>
-                      atualizarElementos([elementoUnico.id], { largura: Math.max(1, valor) })
+                      atualizarElementos([elementoUnico.id], { raioCanto: Math.max(0, valor) })
                     }
                   />
-                  <CampoNumero
-                    rotulo="Altura"
-                    valor={elementoUnico.altura}
-                    minimo={1}
-                    aoMudar={(valor) =>
-                      atualizarElementos([elementoUnico.id], { altura: Math.max(1, valor) })
+                </Secao>
+
+                {/* Máscara de recorte */}
+                <Secao titulo="Máscara">
+                  <div className="grid grid-cols-3 gap-2">
+                    {MASCARAS.map((m) => (
+                      <button
+                        key={m.valor}
+                        type="button"
+                        onClick={() => atualizarElementos([elementoUnico.id], { mascara: m.valor })}
+                        className={`flex flex-col items-center gap-1 rounded-lg border py-2 text-lg transition ${
+                          elementoUnico.mascara === m.valor
+                            ? 'border-primaria-500 bg-primaria-50 text-primaria-600 dark:bg-primaria-900 dark:text-primaria-200'
+                            : 'border-superficie-200 hover:bg-superficie-100 dark:border-superficie-700 dark:hover:bg-superficie-800'
+                        }`}
+                        title={m.nome}
+                      >
+                        <span>{m.icone}</span>
+                        <span className="text-[0.6rem] font-medium">{m.nome}</span>
+                      </button>
+                    ))}
+                  </div>
+                </Secao>
+
+                {/* Filtros predefinidos com intensidade */}
+                <Secao titulo="Filtros">
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {FILTROS.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => atualizarElementos([elementoUnico.id], { filtro: f.id })}
+                        className={`truncate rounded-md px-1.5 py-1.5 text-[0.65rem] font-medium transition ${
+                          elementoUnico.filtro === f.id
+                            ? 'bg-primaria-500 text-white'
+                            : 'bg-superficie-100 text-superficie-700 hover:bg-superficie-200 dark:bg-superficie-800 dark:text-superficie-200 dark:hover:bg-superficie-700'
+                        }`}
+                        title={f.nome}
+                      >
+                        {f.nome}
+                      </button>
+                    ))}
+                  </div>
+                  {elementoUnico.filtro !== 'nenhum' && (
+                    <label className="block">
+                      <span className="mb-1 flex items-center justify-between">
+                        <span className="rotulo-campo mb-0">Intensidade</span>
+                        <span className="text-xs tabular-nums text-superficie-500 dark:text-superficie-400">
+                          {Math.round(elementoUnico.intensidadeFiltro * 100)}%
+                        </span>
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={elementoUnico.intensidadeFiltro}
+                        onChange={(evento) =>
+                          atualizarElementos([elementoUnico.id], {
+                            intensidadeFiltro: parseFloat(evento.target.value),
+                          })
+                        }
+                        className="w-full cursor-pointer accent-primaria-500"
+                        aria-label="Intensidade do filtro"
+                      />
+                    </label>
+                  )}
+                </Secao>
+
+                {/* Ajustes finos */}
+                <Secao titulo="Ajustes">
+                  {AJUSTES_UI.map((aj) => (
+                    <CampoSlider
+                      key={aj.chave}
+                      rotulo={aj.rotulo}
+                      valor={elementoUnico.ajustes[aj.chave]}
+                      min={aj.min}
+                      max={aj.max}
+                      aoMudar={(valor) =>
+                        atualizarElementos([elementoUnico.id], {
+                          ajustes: { ...elementoUnico.ajustes, [aj.chave]: valor },
+                        })
+                      }
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      atualizarElementos([elementoUnico.id], { ajustes: { ...AJUSTES_NEUTROS } })
                     }
-                  />
-                </div>
-                <CampoNumero
-                  rotulo="Raio dos cantos"
-                  valor={elementoUnico.raioCanto}
-                  minimo={0}
-                  aoMudar={(valor) =>
-                    atualizarElementos([elementoUnico.id], { raioCanto: Math.max(0, valor) })
-                  }
-                />
-              </Secao>
+                    className="botao-secundario w-full"
+                  >
+                    ↺ Restaurar ajustes
+                  </button>
+                </Secao>
+              </>
             )}
 
             {/* Linha */}
@@ -662,7 +947,7 @@ export function PainelPropriedades() {
             <Secao titulo="Geral">
               <ControleOpacidade
                 valor={
-                  projeto.elementos.find((e) => selecionados.includes(e.id))?.opacidade ?? 1
+                  pagina.elementos.find((e) => selecionados.includes(e.id))?.opacidade ?? 1
                 }
                 aoMudar={(valor) => atualizarElementos(selecionados, { opacidade: valor })}
               />

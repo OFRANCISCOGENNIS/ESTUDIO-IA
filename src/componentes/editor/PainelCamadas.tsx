@@ -13,6 +13,7 @@
 
 import { useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
+import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 import type { Elemento, TipoElemento } from '../../tipos/projeto'
 
 /** Ícone textual/emoji exibido conforme o tipo do elemento */
@@ -27,7 +28,7 @@ const ICONES_TIPO: Record<TipoElemento, string> = {
 }
 
 export function PainelCamadas() {
-  const projeto = useEditorStore((s) => s.projeto)
+  const pagina = usePaginaAtiva()
   const selecionados = useEditorStore((s) => s.selecionados)
   const selecionar = useEditorStore((s) => s.selecionar)
   const alternarSelecao = useEditorStore((s) => s.alternarSelecao)
@@ -43,7 +44,7 @@ export function PainelCamadas() {
   const [posicaoAlvo, setPosicaoAlvo] = useState<number | null>(null)
 
   // ---- Estado vazio (sem projeto ou sem elementos) ----
-  if (!projeto || projeto.elementos.length === 0) {
+  if (!pagina || pagina.elementos.length === 0) {
     return (
       <section className="flex h-full flex-col bg-white dark:bg-superficie-900">
         <header className="flex items-center gap-2 border-b border-superficie-200 px-4 py-3 dark:border-superficie-800">
@@ -65,7 +66,7 @@ export function PainelCamadas() {
   }
 
   // Lista exibida do topo visual para o fundo (inverte a ordem do array)
-  const elementosExibidos = [...projeto.elementos].reverse()
+  const elementosExibidos = [...pagina.elementos].reverse()
   const idSelecionadoUnico = selecionados.length === 1 ? selecionados[0] : null
 
   // ---- Ações ----
@@ -91,7 +92,7 @@ export function PainelCamadas() {
   const aoSoltarNaPosicao = (posicaoVisual: number) => {
     if (idArrastado !== null) {
       // Converte a posição visual (0 = topo) para o índice no array
-      const novoIndice = projeto.elementos.length - 1 - posicaoVisual
+      const novoIndice = pagina.elementos.length - 1 - posicaoVisual
       reordenarElemento(idArrastado, novoIndice)
     }
     setIdArrastado(null)
@@ -106,7 +107,7 @@ export function PainelCamadas() {
           Camadas
         </span>
         <span className="rounded-full bg-superficie-100 px-2 py-0.5 text-xs font-medium tabular-nums text-superficie-600 dark:bg-superficie-800 dark:text-superficie-300">
-          {projeto.elementos.length}
+          {pagina.elementos.length}
         </span>
       </header>
 

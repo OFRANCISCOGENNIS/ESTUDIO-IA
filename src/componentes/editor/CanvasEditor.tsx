@@ -20,6 +20,7 @@ import {
 } from '../../nucleo/elementos'
 import { mimeDoFormato, registrarExportador } from '../../nucleo/exportacao'
 import { useEditorStore } from '../../estado/useEditorStore'
+import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 import { Elemento, Ferramenta } from '../../tipos/projeto'
 import { ElementoKonva } from './ElementoKonva'
 import { OverlayTextoEdicao } from './OverlayTextoEdicao'
@@ -41,6 +42,7 @@ function dimensoes(elemento: Elemento): { largura: number; altura: number } {
 
 export function CanvasEditor() {
   const projeto = useEditorStore((s) => s.projeto)
+  const pagina = usePaginaAtiva()
   const selecionados = useEditorStore((s) => s.selecionados)
   const ferramenta = useEditorStore((s) => s.ferramenta)
   const zoom = useEditorStore((s) => s.zoom)
@@ -134,7 +136,7 @@ export function CanvasEditor() {
       .filter((n): n is Konva.Node => Boolean(n))
     tr.nodes(nos)
     tr.getLayer()?.batchDraw()
-  }, [selecionados, projeto?.elementos, textoEmEdicao])
+  }, [selecionados, pagina?.elementos, textoEmEdicao])
 
   // ---- Registro do exportador: rasteriza fielmente o artboard ----
   useEffect(() => {
@@ -179,7 +181,7 @@ export function CanvasEditor() {
     [],
   )
 
-  if (!projeto) return null
+  if (!projeto || !pagina) return null
 
   const aoSelecionarElemento = (
     id: string,
@@ -257,7 +259,7 @@ export function CanvasEditor() {
 
   const aoSoltarNoStage = () => {
     if (marquee && marqueeInicio.current) {
-      const dentro = projeto.elementos.filter((el) => {
+      const dentro = pagina.elementos.filter((el) => {
         if (!el.visivel || el.bloqueado) return false
         const { largura, altura } = dimensoes(el)
         return (
@@ -298,7 +300,7 @@ export function CanvasEditor() {
     const stage = stageRef.current
     if (!stage || e.target === stage) return // arraste de pan não gera guias
     const no = e.target as Konva.Node
-    const el = projeto.elementos.find((it) => it.id === no.id() || nosRef.current.get(it.id) === no)
+    const el = pagina.elementos.find((it) => it.id === no.id() || nosRef.current.get(it.id) === no)
     if (!el) return
     const { largura, altura } = dimensoes(el)
     const limiar = LIMIAR_SNAP / zoom
@@ -374,13 +376,13 @@ export function CanvasEditor() {
             y={0}
             width={projeto.larguraCanvas}
             height={projeto.alturaCanvas}
-            fill={projeto.corFundo}
+            fill={pagina.corFundo}
             shadowColor="#000000"
             shadowOpacity={0.18}
             shadowBlur={24}
             shadowOffsetY={6}
           />
-          {projeto.elementos.map((elemento) => (
+          {pagina.elementos.map((elemento) => (
             <ElementoKonva
               key={elemento.id}
               elemento={elemento}

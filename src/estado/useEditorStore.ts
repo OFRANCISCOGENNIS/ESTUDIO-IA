@@ -1,35 +1,36 @@
 // =============================================================
 // Store do editor — estado em tempo real do canvas.
-// Toda mutação de elementos passa por `aplicarAlteracao`, que
-// registra o snapshot no histórico (undo/redo) e agenda o
+// A partir do esquema 2 o projeto tem várias PÁGINAS; todas as
+// mutações de elementos/fundo atuam na PÁGINA ATIVA. `aplicarAlteracao`
+// registra o snapshot (undo/redo cobre inclusive páginas) e agenda o
 // auto-save com debounce de 2 segundos.
 // =============================================================
 
 import { create } from 'zustand'
+import { nanoid } from 'nanoid'
 import { Historico } from '../nucleo/historico'
 import { clonarElemento } from '../nucleo/elementos'
 import { exportarDataUrl } from '../nucleo/exportacao'
 import { debounce } from '../utilitarios/tempo'
-import { Elemento, Ferramenta, Projeto } from '../tipos/projeto'
+import { Elemento, Ferramenta, Pagina, Projeto } from '../tipos/projeto'
 import { useProjetosStore } from './useProjetosStore'
 
 export type EstadoSalvamento = 'salvo' | 'pendente' | 'salvando'
 
-/** Parte do estado coberta pelo histórico de undo/redo */
-interface SnapshotHistorico {
+/** Parte do estado (por página) coberta pelo histórico de undo/redo */
+interface SnapshotPagina {
   elementos: Elemento[]
   corFundo: string
 }
 
 interface EstadoEditor {
   projeto: Projeto | null
+  paginaAtivaId: string
   selecionados: string[]
   ferramenta: Ferramenta
   zoom: number
-  /** Deslocamento do stage (pan) em pixels de tela */
   deslocamento: { x: number; y: number }
   estadoSalvamento: EstadoSalvamento
-  /** Id do texto em edição inline (overlay), ou null */
   textoEmEdicao: string | null
   podeDesfazer: boolean
   podeRefazer: boolean
@@ -47,9 +48,8 @@ interface EstadoEditor {
   alternarSelecao: (id: string) => void
   limparSelecao: () => void
 
-  /** Aplica uma mutação nos elementos/fundo com registro no histórico */
   aplicarAlteracao: (
-    mutador: (atual: SnapshotHistorico) => SnapshotHistorico,
+    mutador: (atual: SnapshotPagina) => SnapshotPagina,
     registrarHistorico?: boolean,
   ) => void
   adicionarElemento: (elemento: Elemento, selecionarNovo?: boolean) => void
@@ -67,6 +67,13 @@ interface EstadoEditor {
   ) => void
   definirCorFundo: (cor: string) => void
 
+  // ---- Páginas ----
+  adicionarPagina: () => void
+  duplicarPagina: (id: string) => void
+  removerPagina: (id: string) => void
+  selecionarPagina: (id: string) => void
+  renomearPagina: (id: string, nome: string) => void
+
   desfazer: () => void
   refazer: () => void
 
@@ -77,11 +84,27 @@ interface EstadoEditor {
 const historico = new Historico()
 let areaTransferencia: Elemento[] = []
 
+/** Snapshot do histórico: todas as páginas (cobre add/remover/reordenar) */
 function snapshotDe(projeto: Projeto): string {
-  return JSON.stringify({ elementos: projeto.elementos, corFundo: projeto.corFundo })
+  return JSON.stringify(projeto.paginas)
 }
 
-/** Dimensões dos elementos para alinhamento (linha usa a extensão dos pontos) */
+/** Índice e objeto da página ativa (ou -1/null) */
+function paginaAtiva(
+  projeto: Projeto | null,
+  paginaAtivaId: string,
+): { indice: number; pagina: Pagina | null } {
+  if (!projeto) return { indice: -1, pagina: null }
+  const indice = projeto.paginas.findIndex((p) => p.id === paginaAtivaId)
+  return { indice, pagina: indice >= 0 ? projeto.paginas[indice] : null }
+}
+
+/** Clona os elementos de uma página com novos ids (para duplicar página) */
+function clonarElementosParaPagina(elementos: Elemento[]): Elemento[] {
+  return elementos.map((el) => ({ ...structuredClone(el), id: nanoid(10) }))
+}
+
+/** Dimensões dos elementos para alinhamento */
 function dimensoesDe(elemento: Elemento): { largura: number; altura: number } {
   if (elemento.tipo === 'linha') {
     const xs = elemento.pontos.filter((_, i) => i % 2 === 0)
@@ -103,7 +126,6 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     const { projeto } = get()
     if (!projeto) return
     set({ estadoSalvamento: 'salvando' })
-    // Miniatura em baixa resolução (largura ~320px) para o dashboard
     let miniatura = projeto.miniatura
     try {
       const escala = Math.min(1, 320 / projeto.larguraCanvas)
@@ -128,8 +150,34 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
   const atualizarFlagsHistorico = () =>
     set({ podeDesfazer: historico.podeDesfazer(), podeRefazer: historico.podeRefazer() })
 
+  /** Substitui a página ativa por uma versão transformada */
+  const mutarPaginaAtiva = (
+    transformar: (pagina: Pagina) => Pagina,
+    registrarHistorico = true,
+  ) => {
+    const { projeto, paginaAtivaId } = get()
+    if (!projeto) return
+    const { indice, pagina } = paginaAtiva(projeto, paginaAtivaId)
+    if (!pagina) return
+    if (registrarHistorico) {
+      historico.registrar(snapshotDe(projeto))
+      atualizarFlagsHistorico()
+    }
+    const paginas = [...projeto.paginas]
+    paginas[indice] = transformar(pagina)
+    set({ projeto: { ...projeto, paginas } })
+    agendarSalvamento()
+  }
+
+  /** Elementos da página ativa (ou lista vazia) */
+  const elementosAtivos = (): Elemento[] => {
+    const { projeto, paginaAtivaId } = get()
+    return paginaAtiva(projeto, paginaAtivaId).pagina?.elementos ?? []
+  }
+
   return {
     projeto: null,
+    paginaAtivaId: '',
     selecionados: [],
     ferramenta: 'selecao',
     zoom: 1,
@@ -143,6 +191,7 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
       historico.limpar()
       set({
         projeto,
+        paginaAtivaId: projeto.paginas[0]?.id ?? '',
         selecionados: [],
         ferramenta: 'selecao',
         zoom: 1,
@@ -155,10 +204,9 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     },
 
     fecharProjeto: () => {
-      // Garante persistência imediata ao sair do editor
       persistir()
       historico.limpar()
-      set({ projeto: null, selecionados: [], textoEmEdicao: null })
+      set({ projeto: null, paginaAtivaId: '', selecionados: [], textoEmEdicao: null })
     },
 
     renomearProjeto: (nome) => {
@@ -189,24 +237,10 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     limparSelecao: () => set({ selecionados: [] }),
 
     aplicarAlteracao: (mutador, registrarHistorico = true) => {
-      const { projeto } = get()
-      if (!projeto) return
-      if (registrarHistorico) {
-        historico.registrar(snapshotDe(projeto))
-        atualizarFlagsHistorico()
-      }
-      const resultado = mutador({
-        elementos: projeto.elementos,
-        corFundo: projeto.corFundo,
-      })
-      set({
-        projeto: {
-          ...projeto,
-          elementos: resultado.elementos,
-          corFundo: resultado.corFundo,
-        },
-      })
-      agendarSalvamento()
+      mutarPaginaAtiva((pagina) => {
+        const resultado = mutador({ elementos: pagina.elementos, corFundo: pagina.corFundo })
+        return { ...pagina, elementos: resultado.elementos, corFundo: resultado.corFundo }
+      }, registrarHistorico)
     },
 
     adicionarElemento: (elemento, selecionarNovo = true) => {
@@ -218,7 +252,6 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     },
 
     aplicarTemplate: (elementos, corFundo) => {
-      // Substitui todo o conteúdo do canvas (operação desfazível)
       get().aplicarAlteracao(() => ({ elementos, corFundo }))
       set({ selecionados: [] })
     },
@@ -227,9 +260,7 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
       get().aplicarAlteracao((atual) => ({
         ...atual,
         elementos: atual.elementos.map((elemento) =>
-          ids.includes(elemento.id)
-            ? ({ ...elemento, ...mudancas } as Elemento)
-            : elemento,
+          ids.includes(elemento.id) ? ({ ...elemento, ...mudancas } as Elemento) : elemento,
         ),
       }))
     },
@@ -247,9 +278,9 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     },
 
     duplicarSelecionados: () => {
-      const { projeto, selecionados } = get()
-      if (!projeto || selecionados.length === 0) return
-      const copias = projeto.elementos
+      const { selecionados } = get()
+      if (selecionados.length === 0) return
+      const copias = elementosAtivos()
         .filter((elemento) => selecionados.includes(elemento.id))
         .map((elemento) => clonarElemento(elemento))
       get().aplicarAlteracao((atual) => ({
@@ -260,9 +291,8 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     },
 
     copiarSelecionados: () => {
-      const { projeto, selecionados } = get()
-      if (!projeto) return
-      areaTransferencia = projeto.elementos.filter((elemento) =>
+      const { selecionados } = get()
+      areaTransferencia = elementosAtivos().filter((elemento) =>
         selecionados.includes(elemento.id),
       )
     },
@@ -302,17 +332,16 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     },
 
     moverCamada: (id, direcao) => {
-      const { projeto } = get()
-      if (!projeto) return
-      const indice = projeto.elementos.findIndex((e) => e.id === id)
+      const elementos = elementosAtivos()
+      const indice = elementos.findIndex((e) => e.id === id)
       if (indice < 0) return
       const destino =
         direcao === 'topo'
-          ? projeto.elementos.length - 1
+          ? elementos.length - 1
           : direcao === 'fundo'
             ? 0
             : direcao === 'frente'
-              ? Math.min(projeto.elementos.length - 1, indice + 1)
+              ? Math.min(elementos.length - 1, indice + 1)
               : Math.max(0, indice - 1)
       if (destino === indice) return
       get().reordenarElemento(id, destino)
@@ -349,21 +378,84 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
       get().aplicarAlteracao((atual) => ({ ...atual, corFundo: cor }))
     },
 
+    // ---- Páginas ----
+    adicionarPagina: () => {
+      const { projeto } = get()
+      if (!projeto) return
+      const nova: Pagina = {
+        id: nanoid(10),
+        nome: `Página ${projeto.paginas.length + 1}`,
+        corFundo: '#ffffff',
+        elementos: [],
+      }
+      historico.registrar(snapshotDe(projeto))
+      atualizarFlagsHistorico()
+      set({
+        projeto: { ...projeto, paginas: [...projeto.paginas, nova] },
+        paginaAtivaId: nova.id,
+        selecionados: [],
+      })
+      agendarSalvamento()
+    },
+
+    duplicarPagina: (id) => {
+      const { projeto } = get()
+      if (!projeto) return
+      const indice = projeto.paginas.findIndex((p) => p.id === id)
+      if (indice < 0) return
+      const original = projeto.paginas[indice]
+      const copia: Pagina = {
+        id: nanoid(10),
+        nome: `${original.nome} (cópia)`,
+        corFundo: original.corFundo,
+        elementos: clonarElementosParaPagina(original.elementos),
+      }
+      historico.registrar(snapshotDe(projeto))
+      atualizarFlagsHistorico()
+      const paginas = [...projeto.paginas]
+      paginas.splice(indice + 1, 0, copia)
+      set({ projeto: { ...projeto, paginas }, paginaAtivaId: copia.id, selecionados: [] })
+      agendarSalvamento()
+    },
+
+    removerPagina: (id) => {
+      const { projeto, paginaAtivaId } = get()
+      if (!projeto || projeto.paginas.length <= 1) return
+      const indice = projeto.paginas.findIndex((p) => p.id === id)
+      if (indice < 0) return
+      historico.registrar(snapshotDe(projeto))
+      atualizarFlagsHistorico()
+      const paginas = projeto.paginas.filter((p) => p.id !== id)
+      const novoAtivo =
+        paginaAtivaId === id
+          ? paginas[Math.max(0, indice - 1)].id
+          : paginaAtivaId
+      set({ projeto: { ...projeto, paginas }, paginaAtivaId: novoAtivo, selecionados: [] })
+      agendarSalvamento()
+    },
+
+    selecionarPagina: (id) => {
+      const { projeto } = get()
+      if (!projeto || !projeto.paginas.some((p) => p.id === id)) return
+      set({ paginaAtivaId: id, selecionados: [], textoEmEdicao: null })
+    },
+
+    renomearPagina: (id, nome) => {
+      const { projeto } = get()
+      if (!projeto) return
+      const paginas = projeto.paginas.map((p) =>
+        p.id === id ? { ...p, nome: nome.trim() || p.nome } : p,
+      )
+      set({ projeto: { ...projeto, paginas } })
+      agendarSalvamento()
+    },
+
     desfazer: () => {
       const { projeto } = get()
       if (!projeto) return
       const anterior = historico.desfazer(snapshotDe(projeto))
       if (anterior === null) return
-      const estado = JSON.parse(anterior) as SnapshotHistorico
-      set({
-        projeto: { ...projeto, elementos: estado.elementos, corFundo: estado.corFundo },
-        // Remove da seleção ids que deixaram de existir
-        selecionados: get().selecionados.filter((id) =>
-          estado.elementos.some((e) => e.id === id),
-        ),
-      })
-      atualizarFlagsHistorico()
-      agendarSalvamento()
+      aplicarSnapshotPaginas(anterior)
     },
 
     refazer: () => {
@@ -371,17 +463,26 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
       if (!projeto) return
       const proximo = historico.refazer(snapshotDe(projeto))
       if (proximo === null) return
-      const estado = JSON.parse(proximo) as SnapshotHistorico
-      set({
-        projeto: { ...projeto, elementos: estado.elementos, corFundo: estado.corFundo },
-        selecionados: get().selecionados.filter((id) =>
-          estado.elementos.some((e) => e.id === id),
-        ),
-      })
-      atualizarFlagsHistorico()
-      agendarSalvamento()
+      aplicarSnapshotPaginas(proximo)
     },
 
     salvarAgora: persistir,
+  }
+
+  /** Restaura um snapshot de páginas (undo/redo) preservando página ativa */
+  function aplicarSnapshotPaginas(snapshot: string) {
+    const { projeto, paginaAtivaId, selecionados } = get()
+    if (!projeto) return
+    const paginas = JSON.parse(snapshot) as Pagina[]
+    const aindaExiste = paginas.some((p) => p.id === paginaAtivaId)
+    const ativo = aindaExiste ? paginaAtivaId : paginas[0]?.id ?? ''
+    const idsValidos = paginas.find((p) => p.id === ativo)?.elementos.map((e) => e.id) ?? []
+    set({
+      projeto: { ...projeto, paginas },
+      paginaAtivaId: ativo,
+      selecionados: selecionados.filter((id) => idsValidos.includes(id)),
+    })
+    atualizarFlagsHistorico()
+    agendarSalvamento()
   }
 })

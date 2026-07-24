@@ -46,7 +46,10 @@ export function useAtalhosTeclado() {
             return
           case 'a': {
             e.preventDefault()
-            const ids = estado.projeto?.elementos.map((el) => el.id) ?? []
+            const paginaAtiva = estado.projeto?.paginas.find(
+              (p) => p.id === estado.paginaAtivaId,
+            )
+            const ids = paginaAtiva?.elementos.map((el) => el.id) ?? []
             estado.selecionar(ids)
             return
           }

@@ -6,6 +6,7 @@
 
 import { useAtalhosTeclado } from '../../hooks/useAtalhosTeclado'
 import { BarraFerramentas } from './BarraFerramentas'
+import { BarraPaginas } from './BarraPaginas'
 import { BarraSuperior } from './BarraSuperior'
 import { CanvasEditor } from './CanvasEditor'
 import { PainelCamadas } from './PainelCamadas'
@@ -24,8 +25,11 @@ export function Editor({ temaEscuro, aoAlternarTema }: Props) {
       <BarraSuperior temaEscuro={temaEscuro} aoAlternarTema={aoAlternarTema} />
       <div className="flex flex-1 overflow-hidden">
         <BarraFerramentas />
-        <div className="relative flex-1 overflow-hidden">
-          <CanvasEditor />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="relative flex-1 overflow-hidden">
+            <CanvasEditor />
+          </div>
+          <BarraPaginas />
         </div>
         <aside className="flex w-72 flex-col border-l border-superficie-200 bg-white dark:border-superficie-800 dark:bg-superficie-900">
           <div className="min-h-0 flex-1 overflow-y-auto rolagem-fina">
