@@ -304,4 +304,6 @@ export interface Predefinicao {
   altura: number
   /** Emoji ilustrativo no dashboard */
   icone: string
+  /** Contexto de uso — agrupa os formatos nos chips do dashboard */
+  contexto: 'Social' | 'Impressão' | 'Apresentação' | 'Web'
 }

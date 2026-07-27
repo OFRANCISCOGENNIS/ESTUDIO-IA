@@ -117,10 +117,10 @@ export function PainelCamadas() {
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-10 text-center">
           <span className="text-3xl opacity-60">🗂️</span>
           <p className="text-sm font-medium text-superficie-700 dark:text-superficie-200">
-            Nenhuma camada ainda
+            Solte algo no canvas — ele está esperando.
           </p>
           <p className="text-xs text-superficie-500 dark:text-superficie-400">
-            Adicione elementos ao canvas para vê-los organizados aqui.
+            Tudo que você adicionar aparece aqui, organizado por camada.
           </p>
         </div>
       </section>

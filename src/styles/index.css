@@ -246,6 +246,56 @@ body {
   }
 }
 
+/* Boas-vindas (§9.3): a faísca traça o contorno do logo, o "D" surge
+   depois, e as partículas flutuam lentíssimas (40s). */
+.traco-logo {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: desenhar-traco 1100ms var(--facil-saida) forwards;
+}
+.letra-logo {
+  animation: aparecer-calmo 700ms var(--facil-saida) 800ms both;
+}
+@keyframes aparecer-calmo {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.particula-lenta {
+  animation: flutuar-lento 40s linear infinite;
+}
+@keyframes flutuar-lento {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(14px, -26px, 0);
+  }
+  100% {
+    transform: translate3d(0, -52px, 0);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .particula-lenta {
+    animation: none;
+    opacity: 0.5;
+  }
+  .letra-logo {
+    animation: aparecer var(--dur-micro) linear both;
+  }
+}
+
 /* Entrada da paleta de comandos (surge de baixo com leve escala) */
 @keyframes surgir {
   from {

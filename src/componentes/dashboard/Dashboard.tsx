@@ -7,9 +7,11 @@
 // premium, coerência claro/escuro.
 // =============================================================
 
-import { useMemo, useState } from 'react'
-import { PREDEFINICOES } from '../../dados/predefinicoes'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { CONTEXTOS, Contexto, PREDEFINICOES } from '../../dados/predefinicoes'
 import { miniaturaTemplate, TEMPLATES } from '../../dados/templates'
+import { BoasVindas } from './BoasVindas'
+import { IconeLua, IconeSol } from '../icones/Icones'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { ResumoProjeto, useProjetosStore } from '../../estado/useProjetosStore'
 import { usePlanoStore } from '../../estado/usePlanoStore'
@@ -80,6 +82,34 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
   const [dialogoPersonalizado, setDialogoPersonalizado] = useState(false)
   const [larguraCustom, setLarguraCustom] = useState('1080')
   const [alturaCustom, setAlturaCustom] = useState('1080')
+  const [contexto, setContexto] = useState<Contexto | 'Todos'>('Todos')
+  const refBusca = useRef<HTMLInputElement>(null)
+
+  // Atalho "/" foca a busca central (§9.1) — fora de campos de texto
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey) return
+      const alvo = e.target
+      if (
+        alvo instanceof HTMLElement &&
+        (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA' || alvo.isContentEditable)
+      ) {
+        return
+      }
+      e.preventDefault()
+      refBusca.current?.focus()
+    }
+    window.addEventListener('keydown', aoTeclar)
+    return () => window.removeEventListener('keydown', aoTeclar)
+  }, [])
+
+  const predefinicoesFiltradas = useMemo(
+    () =>
+      contexto === 'Todos'
+        ? PREDEFINICOES
+        : PREDEFINICOES.filter((p) => p.contexto === contexto),
+    [contexto],
+  )
 
   const projetosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase()
@@ -101,6 +131,20 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
     const altura = Math.min(8000, Math.max(50, Number(alturaCustom) || 1080))
     setDialogoPersonalizado(false)
     criarComTamanho('Design personalizado', largura, altura)
+  }
+
+  // Estado vazio: abre um canvas JÁ com template sugerido — nunca em branco (§9.2)
+  const comecarPrimeiroDesign = () => {
+    const sugerido = TEMPLATES[0]
+    abrirProjeto(
+      criarProjeto(
+        'Meu primeiro design',
+        1080,
+        1080,
+        sugerido.corFundo,
+        sugerido.gerarElementos(1080, 1080),
+      ),
+    )
   }
 
   const criarDeTemplate = (id: string) => {
@@ -131,6 +175,9 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
 
   return (
     <div className="flex h-full bg-[--sup-elevada-2] dark:bg-superficie-950">
+      {/* Boas-vindas do primeiro acesso */}
+      <BoasVindas />
+
       {/* Trilha de navegação */}
       <nav className="flex w-[76px] shrink-0 flex-col items-center gap-1 border-r border-superficie-200/80 bg-[--sup-elevada-1] py-4 dark:border-superficie-800 dark:bg-superficie-900">
         <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl2 bg-marca text-lg font-black text-white shadow-[0_4px_16px_-4px_rgb(124_77_255/0.5)]">
@@ -159,36 +206,81 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
           )
         })}
         <div className="mt-auto">
-          <button onClick={aoAlternarTema} className="botao-icone" aria-label={temaEscuro ? 'Tema claro' : 'Tema escuro'} title={temaEscuro ? 'Tema claro' : 'Tema escuro'}>
-            {temaEscuro ? '☀️' : '🌙'}
+          <button
+            onClick={aoAlternarTema}
+            className="botao-icone relative overflow-hidden"
+            aria-label={temaEscuro ? 'Tema claro' : 'Tema escuro'}
+            title={temaEscuro ? 'Tema claro' : 'Tema escuro'}
+          >
+            <span
+              className={`absolute transition-[opacity,transform] duration-media ease-facil-padrao ${
+                temaEscuro ? 'rotate-0 opacity-100' : '-rotate-180 opacity-0'
+              }`}
+            >
+              <IconeSol tamanho={18} />
+            </span>
+            <span
+              className={`absolute transition-[opacity,transform] duration-media ease-facil-padrao ${
+                temaEscuro ? 'rotate-180 opacity-0' : 'rotate-0 opacity-100'
+              }`}
+            >
+              <IconeLua tamanho={18} />
+            </span>
           </button>
         </div>
       </nav>
 
       {/* Conteúdo */}
       <main className="rolagem-fina flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-6xl px-6 py-6 estudio:px-10">
-          {/* Barra topo: saudação + upgrade */}
-          <div className="mb-6 flex items-center justify-between">
-            <p className="text-sm font-medium text-superficie-600 dark:text-superficie-300">
-              DesignStudio <span className="text-primaria-600 dark:text-primaria-300">Pro</span>
-            </p>
-            {plano === 'gratuito' ? (
-              <button
-                onClick={() => definirPlano('pro')}
-                className="flex items-center gap-2 rounded-full bg-marca px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_16px_-4px_rgb(124_77_255/0.5)] transition-transform duration-micro ease-facil-padrao hover:-translate-y-px active:scale-[0.97]"
-              >
-                👑 Fazer upgrade do plano
-              </button>
-            ) : (
-              <span className="rounded-full bg-primaria-500/12 px-4 py-2 text-sm font-semibold text-primaria-600 dark:text-primaria-300">
-                Plano {plano === 'pro' ? 'Pro' : 'Time'} ✓
-              </span>
-            )}
+        {/* Topo fixo com busca central (§9.1) */}
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-superficie-200/70 bg-superficie-50/80 px-6 backdrop-blur-xl dark:border-superficie-800 dark:bg-superficie-900/80 estudio:px-10">
+          <p className="hidden shrink-0 text-sm font-semibold text-superficie-700 dark:text-superficie-200 lg:block">
+            DesignStudio <span className="text-primaria-600 dark:text-primaria-300">Pro</span>
+          </p>
+          <div className="mx-auto flex w-full max-w-2xl items-center gap-2 rounded-xl border border-superficie-200 bg-white px-3 transition-[border-color] duration-micro focus-within:border-primaria-400 dark:border-superficie-700 dark:bg-superficie-800">
+            <Lupa className="h-4 w-4 shrink-0 text-superficie-500" />
+            <input
+              ref={refBusca}
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && setBusca('')}
+              placeholder="Buscar seus projetos…"
+              aria-label="Buscar projetos"
+              className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-superficie-500 dark:text-superficie-100"
+            />
+            <kbd className="hidden shrink-0 rounded border border-superficie-200 px-1.5 py-0.5 text-[10px] font-medium text-superficie-500 dark:border-superficie-700 sm:block">
+              /
+            </kbd>
           </div>
+          {plano === 'gratuito' ? (
+            <button
+              onClick={() => definirPlano('pro')}
+              className="shrink-0 whitespace-nowrap rounded-full bg-marca px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_16px_-4px_rgb(124_77_255/0.5)] transition-transform duration-micro ease-facil-padrao hover:-translate-y-px active:scale-[0.97]"
+            >
+              👑 Fazer upgrade
+            </button>
+          ) : (
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-primaria-500/12 px-4 py-2 text-sm font-semibold text-primaria-600 dark:text-primaria-300">
+              Plano {plano === 'pro' ? 'Pro' : 'Time'} ✓
+            </span>
+          )}
+        </header>
+
+        <div className="mx-auto max-w-6xl px-6 py-6 estudio:px-10">
+
+          {/* ===== BUSCA ATIVA (sobrepõe a seção atual) ===== */}
+          {busca.trim() !== '' && (
+            <SecaoProjetos
+              titulo={`Resultados para "${busca.trim()}"`}
+              projetos={projetosFiltrados}
+              vazioTexto="Nada corresponde à busca."
+              aoAbrir={abrirExistente}
+              aoExcluir={excluirProjeto}
+            />
+          )}
 
           {/* ===== INÍCIO ===== */}
-          {secao === 'inicio' && (
+          {secao === 'inicio' && busca.trim() === '' && (
             <>
               {/* Hero */}
               <section className="relative mb-8 overflow-hidden rounded-2xl border border-superficie-200/70 bg-gradient-to-br from-primaria-50 via-white to-[#eef1ff] p-8 shadow-suave estudio:p-12 dark:border-superficie-800 dark:from-superficie-900 dark:via-superficie-900 dark:to-primaria-900/30">
@@ -244,34 +336,104 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
                       </button>
                     </div>
                   ) : (
-                    <div className="mx-auto flex max-w-xl items-center gap-2 rounded-2xl border border-superficie-200 bg-white p-2 shadow-painel dark:border-superficie-700 dark:bg-superficie-800">
-                      <Lupa className="ml-2 h-5 w-5 shrink-0 text-superficie-500" />
-                      <input
-                        value={busca}
-                        onChange={(e) => setBusca(e.target.value)}
-                        placeholder="Buscar seus projetos ou escolher um formato abaixo…"
-                        className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-superficie-500 dark:text-superficie-100"
-                        aria-label="Buscar projetos"
-                      />
-                    </div>
+                    <p className="text-sm text-superficie-600 dark:text-superficie-300">
+                      Escolha um formato abaixo — ou{' '}
+                      <button
+                        onClick={() => setDialogoPersonalizado(true)}
+                        className="font-semibold text-primaria-600 underline-offset-2 hover:underline dark:text-primaria-300"
+                      >
+                        defina um tamanho personalizado
+                      </button>
+                      .
+                    </p>
                   )}
                 </div>
               </section>
 
-              {/* Categorias coloridas */}
-              <section className="mb-10">
-                <div className="mb-4 flex items-center justify-between">
+              {/* Continuar de onde parou (§9.1) — ~80% das sessões são retomadas */}
+              {resumos.length > 0 && (
+                <section className="mb-10">
+                  <h2 className="mb-4 text-lg font-bold text-superficie-900 dark:text-white">
+                    Continuar de onde parou
+                  </h2>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {resumos.slice(0, 3).map((r, i) => (
+                      <button
+                        key={r.id}
+                        onClick={() => abrirExistente(r)}
+                        style={{ animationDelay: `${i * 40}ms` }}
+                        className="entra-item group overflow-hidden rounded-xl2 border border-superficie-200 bg-white text-left shadow-suave transition-[transform,box-shadow] duration-micro ease-facil-saida hover:-translate-y-1 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900"
+                      >
+                        <div className="flex aspect-video items-center justify-center overflow-hidden bg-[--sup-elevada-2] dark:bg-superficie-850">
+                          {r.miniatura ? (
+                            <img
+                              src={r.miniatura}
+                              alt={`Miniatura de ${r.nome}`}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : (
+                            <span className="text-3xl opacity-40">🎨</span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between gap-2 p-3">
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-superficie-900 dark:text-superficie-100">
+                              {r.nome}
+                            </span>
+                            <span className="block text-xs text-superficie-500">
+                              {tempoRelativo(r.atualizadoEm)}
+                            </span>
+                          </span>
+                          <span className="shrink-0 rounded-full bg-primaria-500/12 px-2.5 py-1 text-[11px] font-semibold text-primaria-600 opacity-0 transition-opacity duration-micro group-hover:opacity-100 dark:text-primaria-300">
+                            Retomar
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Criar um design — chips por contexto (§9.1) */}
+              <section className="relative mb-10">
+                {/* Único brand moment decorativo permitido */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -left-10 -top-10 h-44 w-44 rounded-full bg-primaria-500/20 blur-3xl"
+                />
+                <div className="relative mb-4 flex items-center justify-between gap-3">
                   <h2 className="text-lg font-bold text-superficie-900 dark:text-white">Criar um design</h2>
-                  <button onClick={() => setDialogoPersonalizado(true)} className="botao-secundario">
-                    ✚ Tamanho personalizado
-                  </button>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-5">
-                  {PREDEFINICOES.map((p) => (
+
+                {/* Chips roláveis que filtram a grade */}
+                <div className="rolagem-fina relative mb-5 flex snap-x gap-2 overflow-x-auto pb-1">
+                  {(['Todos', ...CONTEXTOS] as const).map((ctx) => {
+                    const ativo = ctx === contexto
+                    return (
+                      <button
+                        key={ctx}
+                        onClick={() => setContexto(ctx)}
+                        aria-pressed={ativo}
+                        className={`shrink-0 snap-start rounded-full px-3.5 py-1.5 text-sm font-semibold transition-[background-color,color] duration-micro ease-facil-padrao ${
+                          ativo
+                            ? 'bg-primaria-500 text-white shadow-[0_2px_8px_-2px_rgb(124_77_255/0.6)]'
+                            : 'bg-white text-superficie-600 hover:text-superficie-900 dark:bg-superficie-800 dark:text-superficie-300 dark:hover:text-white'
+                        }`}
+                      >
+                        {ctx}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="relative flex flex-wrap gap-x-6 gap-y-5">
+                  {predefinicoesFiltradas.map((p, i) => (
                     <button
                       key={p.id}
                       onClick={() => criarComTamanho(p.nome, p.largura, p.altura)}
-                      className="group flex w-20 flex-col items-center gap-2 text-center"
+                      style={i < 8 ? { animationDelay: `${i * 40}ms` } : undefined}
+                      className={`group flex w-20 flex-col items-center gap-2 text-center ${i < 8 ? 'entra-item' : ''}`}
+                      title={`${p.largura} × ${p.altura} px`}
                     >
                       <span
                         className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${CORES_CATEGORIA[p.id] ?? 'from-primaria-500 to-primaria-700'} text-2xl text-white shadow-painel transition-transform duration-micro ease-facil-saida group-hover:-translate-y-1 group-hover:scale-105`}
@@ -283,18 +445,37 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
                       </span>
                     </button>
                   ))}
+
+                  {/* Cartão fantasma pontilhado no fim da linha */}
+                  <button
+                    onClick={() => setDialogoPersonalizado(true)}
+                    className="group flex w-20 flex-col items-center gap-2 text-center"
+                    title="Definir largura e altura"
+                  >
+                    <span className="flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-dashed border-superficie-200 text-2xl text-superficie-500 transition-[border-color,color,transform] duration-micro ease-facil-saida group-hover:-translate-y-1 group-hover:border-primaria-400 group-hover:text-primaria-500 dark:border-superficie-700">
+                      +
+                    </span>
+                    <span className="text-xs font-semibold leading-tight text-superficie-800 dark:text-superficie-200">
+                      Personalizado
+                    </span>
+                  </button>
                 </div>
               </section>
 
-              {/* Recentes */}
-              <SecaoProjetos
-                titulo="Recentes"
-                projetos={resumos.slice(0, 10)}
-                vazioTexto="Seus designs aparecem aqui. Crie o primeiro acima! 🎨"
-                aoAbrir={abrirExistente}
-                aoExcluir={excluirProjeto}
-                acaoVerTodos={resumos.length > 10 ? () => setSecao('projetos') : undefined}
-              />
+              {/* Recentes (além dos 3 em destaque) */}
+              {resumos.length > 3 && (
+                <SecaoProjetos
+                  titulo="Recentes"
+                  projetos={resumos.slice(3, 13)}
+                  vazioTexto=""
+                  aoAbrir={abrirExistente}
+                  aoExcluir={excluirProjeto}
+                  acaoVerTodos={resumos.length > 13 ? () => setSecao('projetos') : undefined}
+                />
+              )}
+
+              {/* Estado vazio memorável (§9.2) */}
+              {resumos.length === 0 && <PrimeiraObra aoComecar={comecarPrimeiroDesign} />}
             </>
           )}
 
@@ -394,6 +575,50 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
 }
 
 // ---- Grade de projetos reutilizável ----
+/**
+ * Estado vazio memorável (§9.2): ilustração de linha de prancheta com
+ * faísca, uma frase e um CTA único que abre um canvas já com template.
+ */
+function PrimeiraObra({ aoComecar }: { aoComecar: () => void }) {
+  return (
+    <section className="flex flex-col items-center px-6 py-14 text-center">
+      <svg
+        width="132"
+        height="112"
+        viewBox="0 0 132 112"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        className="mb-6 text-primaria-400"
+      >
+        {/* Prancheta */}
+        <rect x="22" y="14" width="72" height="86" rx="6" />
+        <path d="M46 14v-4a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v4" />
+        <path d="M36 44h30M36 58h44M36 72h24" opacity="0.55" />
+        {/* Faísca da marca */}
+        <path d="M104 26l3.4 9.1 9.1 3.4-9.1 3.4L104 51l-3.4-9.1-9.1-3.4 9.1-3.4L104 26Z" />
+        <path d="M118 60l1.7 4.6 4.6 1.7-4.6 1.7L118 73l-1.7-5-4.6-1.7 4.6-1.7L118 60Z" opacity="0.7" />
+      </svg>
+
+      <h2 className="mb-2 text-xl font-bold text-superficie-900 dark:text-white">
+        Sua primeira obra começa aqui.
+      </h2>
+      <p className="mb-6 max-w-sm text-sm text-superficie-600 dark:text-superficie-300">
+        Abrimos um canvas já com um modelo pronto — é só trocar o texto e as cores.
+      </p>
+      <button
+        onClick={aoComecar}
+        className="rounded-xl2 bg-primaria-500 px-6 py-3 text-sm font-semibold text-white shadow-suave transition-[transform,box-shadow,background-color] duration-micro ease-facil-saida hover:scale-[1.02] hover:bg-primaria-600 hover:shadow-painel active:scale-[0.99]"
+      >
+        Criar meu primeiro design
+      </button>
+    </section>
+  )
+}
+
 function SecaoProjetos({
   titulo,
   projetos,
