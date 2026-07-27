@@ -14,8 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 )
 
-// PWA — registra o service worker para funcionamento offline básico
-if ('serviceWorker' in navigator) {
+// PWA — registra o service worker para funcionamento offline básico.
+// No build de arquivo único (VITE_SEM_SW) não há /sw.js para registrar.
+if (import.meta.env.VITE_SEM_SW !== '1' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
       // Registro do SW falhou — o app segue funcionando online

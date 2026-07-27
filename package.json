@@ -9,7 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "site": "vite build --config vite.config.site.ts && node scripts/baixar-fontes.mjs dist-site/fontes.css && node scripts/gerar-site.mjs"
   },
   "dependencies": {
     "konva": "^9.3.14",
