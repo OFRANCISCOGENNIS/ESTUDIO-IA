@@ -331,11 +331,14 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
                 Comece a partir de um modelo e personalize à vontade.
               </p>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 estudio:grid-cols-4">
-                {TEMPLATES.map((tpl) => (
+                {TEMPLATES.map((tpl, i) => (
                   <button
                     key={tpl.id}
                     onClick={() => criarDeTemplate(tpl.id)}
-                    className="group overflow-hidden rounded-xl2 border border-superficie-200 bg-white text-left shadow-suave transition-[transform,box-shadow] duration-micro ease-facil-saida hover:-translate-y-1 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900"
+                    style={i < 8 ? { animationDelay: `${i * 40}ms` } : undefined}
+                    className={`group overflow-hidden rounded-xl2 border border-superficie-200 bg-white text-left shadow-suave transition-[transform,box-shadow] duration-micro ease-facil-saida hover:-translate-y-1 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900 ${
+                      i < 8 ? 'entra-item' : ''
+                    }`}
                   >
                     <div className="aspect-square w-full overflow-hidden bg-superficie-100 dark:bg-superficie-950">
                       <img
@@ -424,10 +427,14 @@ function SecaoProjetos({
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 estudio:grid-cols-5">
-          {projetos.map((r) => (
+          {projetos.map((r, i) => (
             <div
               key={r.id}
-              className="group relative overflow-hidden rounded-xl2 border border-superficie-200 bg-white shadow-suave transition-[transform,box-shadow] duration-micro ease-facil-saida hover:-translate-y-1 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900"
+              // Stagger de 40ms, teto de 8 itens (§7.5)
+              style={i < 8 ? { animationDelay: `${i * 40}ms` } : undefined}
+              className={`group relative overflow-hidden rounded-xl2 border border-superficie-200 bg-white shadow-suave transition-[transform,box-shadow] duration-micro ease-facil-saida hover:-translate-y-1 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900 ${
+                i < 8 ? 'entra-item' : ''
+              }`}
             >
               <button onClick={() => aoAbrir(r)} className="block w-full text-left">
                 <div className="flex aspect-square items-center justify-center overflow-hidden bg-[--sup-elevada-2] dark:bg-superficie-850">

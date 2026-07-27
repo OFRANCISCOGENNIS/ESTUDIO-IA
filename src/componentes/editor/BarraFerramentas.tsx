@@ -5,7 +5,7 @@
 // leem/escrevem no store; não conhecem o Konva.
 // =============================================================
 
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { useUiStore } from '../../estado/useUiStore'
 import { criarForma, criarGrafico, criarImagem, criarLinha, criarTabela, criarTexto } from '../../nucleo/elementos'
@@ -101,10 +101,31 @@ export function BarraFerramentas() {
   const [qrTexto, setQrTexto] = useState('')
   const [erroQr, setErroQr] = useState('')
 
+  // Indicador deslizante da aba ativa (posição medida do botão real)
+  const refTrilha = useRef<HTMLDivElement>(null)
+  const refsAbas = useRef<Record<string, HTMLButtonElement | null>>({})
+  const [indicador, setIndicador] = useState({ y: 0, altura: 0 })
+
   // Trocar de aba por fora (paleta de comandos) reabre o painel
   useEffect(() => {
     setRecolhido(false)
   }, [aba])
+
+  // Recalcula a posição do indicador quando a aba ativa muda
+  useLayoutEffect(() => {
+    const botao = refsAbas.current[aba]
+    const trilha = refTrilha.current
+    if (!botao || !trilha || recolhido) {
+      setIndicador((i) => ({ ...i, altura: 0 }))
+      return
+    }
+    // offsetTop é relativo à trilha (que é `relative`), imune ao scroll
+    const alturaBarra = 24
+    setIndicador({
+      y: botao.offsetTop + (botao.offsetHeight - alturaBarra) / 2,
+      altura: alturaBarra,
+    })
+  }, [aba, recolhido])
 
   // Sem projeto aberto não há canvas para editar
   if (!projeto) return null
@@ -286,9 +307,11 @@ export function BarraFerramentas() {
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
-                  {templatesFiltrados.map((tpl) => (
+                  {templatesFiltrados.map((tpl, i) => (
                     <button
                       key={tpl.id}
+                      // Stagger de 40ms com teto de 8 itens (§7.5)
+                      style={i < 8 ? { animationDelay: `${i * 40}ms` } : undefined}
                       onClick={() =>
                         aplicarTemplate(
                           tpl.gerarElementos(projeto.larguraCanvas, projeto.alturaCanvas),
@@ -296,7 +319,9 @@ export function BarraFerramentas() {
                         )
                       }
                       title={`${tpl.nome} · ${tpl.categoria}`}
-                      className="group overflow-hidden rounded-xl2 border border-superficie-200 bg-white text-left shadow-suave transition hover:-translate-y-0.5 hover:border-primaria-300 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900"
+                      className={`group overflow-hidden rounded-xl2 border border-superficie-200 bg-white text-left shadow-suave transition hover:-translate-y-0.5 hover:border-primaria-300 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900 ${
+                        i < 8 ? 'entra-item' : ''
+                      }`}
                     >
                       <div className="aspect-square w-full overflow-hidden bg-superficie-100 dark:bg-superficie-950">
                         <img
@@ -637,7 +662,20 @@ export function BarraFerramentas() {
   return (
     <div className="flex h-full">
       {/* Trilha vertical de abas em 4 grupos */}
-      <div className="rolagem-fina flex w-16 shrink-0 flex-col items-center overflow-y-auto border-r border-superficie-200 bg-white py-2 dark:border-superficie-800 dark:bg-superficie-900">
+      <div
+        ref={refTrilha}
+        className="rolagem-fina relative flex w-16 shrink-0 flex-col items-center overflow-y-auto border-r border-superficie-200 bg-white py-2 dark:border-superficie-800 dark:bg-superficie-900"
+      >
+        {/* Indicador único que DESLIZA entre as abas (§7.2) — nunca pisca */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 z-10 w-1 rounded-r-full bg-primaria-500 transition-[transform,opacity,height] duration-media ease-facil-saida"
+          style={{
+            height: indicador.altura,
+            transform: `translateY(${indicador.y}px)`,
+            opacity: indicador.altura > 0 ? 1 : 0,
+          }}
+        />
         {GRUPOS_ABAS.map((grupo, indiceGrupo) => (
           <div key={indiceGrupo} className="flex w-full flex-col items-center gap-0.5">
             {indiceGrupo > 0 && (
@@ -648,6 +686,7 @@ export function BarraFerramentas() {
               return (
                 <button
                   key={item.id}
+                  ref={(no) => (refsAbas.current[item.id] = no)}
                   onClick={() => selecionarAba(item.id)}
                   title={item.id}
                   aria-pressed={ativa}
@@ -657,13 +696,9 @@ export function BarraFerramentas() {
                       : 'text-superficie-600 hover:bg-superficie-100 hover:text-superficie-900 dark:text-superficie-300 dark:hover:bg-superficie-800 dark:hover:text-superficie-100'
                   }`}
                 >
-                  {/* Barra indicadora da aba ativa */}
-                  <span
-                    className={`absolute -left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-primaria-500 transition-opacity duration-micro ${
-                      ativa ? 'opacity-100' : 'opacity-0'
-                    }`}
-                  />
-                  <item.Icone tamanho={20} />
+                  <span className="transition-transform duration-micro ease-facil-padrao group-hover:scale-[1.08]">
+                    <item.Icone tamanho={20} />
+                  </span>
                   <span>{item.id}</span>
                 </button>
               )
@@ -672,9 +707,13 @@ export function BarraFerramentas() {
         ))}
       </div>
 
-      {/* Painel expansível com o conteúdo da aba ativa */}
+      {/* Painel expansível com o conteúdo da aba ativa.
+          A `key` faz o conteúdo re-animar a cada troca de aba (§7.2). */}
       {!recolhido && (
-        <div className="rolagem-fina w-[260px] shrink-0 overflow-y-auto border-r border-superficie-200 bg-superficie-50 p-3 dark:border-superficie-800 dark:bg-superficie-950">
+        <div
+          key={aba}
+          className="entra-painel rolagem-fina w-[260px] shrink-0 overflow-y-auto border-r border-superficie-200 bg-superficie-50 p-3 dark:border-superficie-800 dark:bg-superficie-950"
+        >
           {renderConteudo()}
         </div>
       )}

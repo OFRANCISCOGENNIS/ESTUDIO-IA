@@ -139,6 +139,113 @@ body {
   }
 }
 
+/* =============================================================
+   Movimento significativo (§7) — cada animação carrega informação.
+   ============================================================= */
+
+/* Check do auto-save: desenhado por stroke-dashoffset (§7.2) */
+.traco-check {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: desenhar-traco var(--dur-curta) var(--facil-saida) forwards;
+}
+@keyframes desenhar-traco {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Skeleton com shimmer varrendo em 1.4s (§7.5 / §11.3) */
+.esqueleto {
+  @apply relative overflow-hidden rounded-xl2 bg-superficie-200 dark:bg-superficie-800;
+}
+.esqueleto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.45) 50%,
+    transparent 100%
+  );
+  animation: varrer 1.4s infinite;
+}
+.dark .esqueleto::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.07) 50%,
+    transparent 100%
+  );
+}
+@keyframes varrer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Entrada de item em grade (stagger aplicado por delay inline, teto 8) */
+.entra-item {
+  animation: entrar-item var(--dur-media) var(--facil-saida) both;
+}
+@keyframes entrar-item {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Entrada do painel lateral (swoosh calmo, §7.3) */
+.entra-painel {
+  animation: entrar-painel var(--dur-media) var(--facil-saida) both;
+}
+@keyframes entrar-painel {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Movimento reduzido: preserva a informação, zera translação/scale/shimmer */
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto::after {
+    animation: pulsar-suave 1.6s ease-in-out infinite;
+    background: none;
+    transform: none;
+  }
+  .entra-item,
+  .entra-painel {
+    animation: aparecer var(--dur-micro) linear both;
+  }
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes pulsar-suave {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+}
+
 /* Entrada da paleta de comandos (surge de baixo com leve escala) */
 @keyframes surgir {
   from {

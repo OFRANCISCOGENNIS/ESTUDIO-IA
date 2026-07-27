@@ -128,13 +128,29 @@ export function PainelIA() {
           {carregandoDesign ? 'Gerando…' : 'Gerar 4 opções'}
         </button>
 
-        {opcoes.length > 0 && (
+        {/* Skeletons na dimensão exata enquanto a IA gera (§11.3) —
+            nunca spinner de tela cheia; CLS = 0 ao trocar pelo resultado. */}
+        {carregandoDesign && (
+          <div className="mt-3 grid grid-cols-2 gap-2" aria-hidden="true">
+            {Array.from({ length: 4 }, (_, i) => (
+              <div key={i} className="overflow-hidden rounded-lg border border-superficie-200 dark:border-superficie-800">
+                <div className="esqueleto h-12 rounded-none" />
+                <div className="px-2 py-1">
+                  <div className="esqueleto h-3 w-3/4 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!carregandoDesign && opcoes.length > 0 && (
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {opcoes.map((op) => (
+            {opcoes.map((op, i) => (
               <button
                 key={op.id}
                 onClick={() => aplicarDesign(op)}
-                className="overflow-hidden rounded-lg border border-superficie-200 text-left shadow-suave transition hover:-translate-y-0.5 hover:border-primaria-300 dark:border-superficie-800"
+                style={{ animationDelay: `${i * 40}ms` }}
+                className="entra-item overflow-hidden rounded-lg border border-superficie-200 text-left shadow-suave transition hover:-translate-y-0.5 hover:border-primaria-300 dark:border-superficie-800"
                 title={`Aplicar: ${op.nome}`}
               >
                 <div className="flex h-12">

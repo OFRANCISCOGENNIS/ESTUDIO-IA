@@ -13,6 +13,7 @@ import { usePlanoStore } from '../../estado/usePlanoStore'
 import { useUiStore } from '../../estado/useUiStore'
 import { recursoLiberado } from '../../dados/planos'
 import { tempoRelativo } from '../../utilitarios/tempo'
+import { IndicadorSalvamento } from './IndicadorSalvamento'
 import {
   IconeCompartilhar,
   IconeDesfazer,
@@ -50,7 +51,6 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
   const resumos = useProjetosStore((s) => s.resumos)
   const carregarProjeto = useProjetosStore((s) => s.carregarProjeto)
   const zoom = useEditorStore((s) => s.zoom)
-  const estadoSalvamento = useEditorStore((s) => s.estadoSalvamento)
   const podeDesfazer = useEditorStore((s) => s.podeDesfazer)
   const podeRefazer = useEditorStore((s) => s.podeRefazer)
   const fecharProjeto = useEditorStore((s) => s.fecharProjeto)
@@ -143,14 +143,6 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
       setMenuAberto(false)
     }
   }
-
-  // Texto discreto do indicador de auto-save
-  const textoSalvamento =
-    estadoSalvamento === 'salvo'
-      ? 'Salvo ✓'
-      : estadoSalvamento === 'salvando'
-        ? 'Salvando…'
-        : 'Alterações não salvas'
 
   // Classe de um botão de opção (formato/escala) conforme ativo
   const classeOpcao = (ativo: boolean) =>
@@ -315,13 +307,8 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
         </button>
       </div>
 
-      {/* Indicador de auto-save */}
-      <span
-        className="hidden whitespace-nowrap text-xs text-superficie-700 dark:text-superficie-300 md:inline"
-        aria-live="polite"
-      >
-        {textoSalvamento}
-      </span>
+      {/* Indicador de auto-save (spinner → check desenhado) */}
+      <IndicadorSalvamento />
 
       {/* Empurra o restante para a direita */}
       <div className="flex-1" />
@@ -365,11 +352,25 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
       {/* Toggle de tema */}
       <button
         onClick={aoAlternarTema}
-        className="botao-icone"
+        className="botao-icone relative overflow-hidden"
         title={temaEscuro ? 'Tema claro' : 'Tema escuro'}
         aria-label="Alternar tema"
       >
-        {temaEscuro ? <IconeSol tamanho={18} /> : <IconeLua tamanho={18} />}
+        {/* Crossfade + rotação 180° entre sol e lua (§7.2) */}
+        <span
+          className={`absolute transition-[opacity,transform] duration-media ease-facil-padrao ${
+            temaEscuro ? 'rotate-0 opacity-100' : '-rotate-180 opacity-0'
+          }`}
+        >
+          <IconeSol tamanho={18} />
+        </span>
+        <span
+          className={`absolute transition-[opacity,transform] duration-media ease-facil-padrao ${
+            temaEscuro ? 'rotate-180 opacity-0' : 'rotate-0 opacity-100'
+          }`}
+        >
+          <IconeLua tamanho={18} />
+        </span>
       </button>
 
       {/* Apresentar (modo apresentação) */}

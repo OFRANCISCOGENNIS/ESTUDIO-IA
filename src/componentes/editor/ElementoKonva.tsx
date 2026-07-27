@@ -36,6 +36,7 @@ import {
   ModoMistura,
 } from '../../tipos/projeto'
 import { useImagem } from '../../utilitarios/useImagem'
+import { movimentoReduzido } from '../../hooks/usaMovimentoReduzido'
 
 const DIMENSAO_MINIMA = 5
 
@@ -107,8 +108,39 @@ export function ElementoKonva({
     [aoAlterar, elemento],
   )
 
+  // ---- Nascimento: elemento novo assenta com fade (§7.4) ----
+  // Tween direto no nó Konva: zero re-render do React durante a animação.
+  // Respeita prefers-reduced-motion (§7.7) e não mexe em transform, para
+  // não brigar com arraste/Transformer se o usuário agir durante o fade.
+  const noRef = useRef<Konva.Group | null>(null)
+  const jaNasceu = useRef(false)
+  const opacidadeAlvo = elemento.opacidade
+  useEffect(() => {
+    if (jaNasceu.current) return
+    jaNasceu.current = true
+    const no = noRef.current
+    if (!no || movimentoReduzido()) return
+    no.opacity(0)
+    const tween = new Konva.Tween({
+      node: no,
+      opacity: opacidadeAlvo,
+      duration: 0.24,
+      easing: Konva.Easings.EaseOut,
+    })
+    tween.play()
+    return () => {
+      tween.destroy()
+      no.opacity(opacidadeAlvo)
+    }
+    // Só no primeiro mount deste elemento
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const propsGrupo = {
-    ref: (no: Konva.Node | null) => registrarNo(elemento.id, no),
+    ref: (no: Konva.Group | null) => {
+      noRef.current = no
+      registrarNo(elemento.id, no)
+    },
     x: elemento.x,
     y: elemento.y,
     rotation: elemento.rotacao,
