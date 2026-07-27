@@ -22,6 +22,8 @@ export function PainelMarca() {
   const definirCorFundo = useEditorStore((s) => s.definirCorFundo)
   const adicionarElemento = useEditorStore((s) => s.adicionarElemento)
   const atualizarElementos = useEditorStore((s) => s.atualizarElementos)
+  const recolorirDesignAtivo = useEditorStore((s) => s.recolorirDesignAtivo)
+  const definirFonteGlobal = useEditorStore((s) => s.definirFonteGlobal)
 
   const kits = useMarcaStore((s) => s.kits)
   const criarKit = useMarcaStore((s) => s.criarKit)
@@ -62,6 +64,14 @@ export function PainelMarca() {
       .filter((e) => e.tipo === 'texto' && selecionados.includes(e.id))
       .map((e) => e.id)
     if (idsTexto.length > 0) atualizarElementos(idsTexto, { fonte })
+  }
+
+  // Aplica a marca ao design inteiro: recolore com a paleta do kit e
+  // troca a fonte de todos os textos pela fonte principal da marca.
+  const aplicarMarcaAoDesign = () => {
+    if (!kit) return
+    if (kit.cores.length > 0) recolorirDesignAtivo(kit.cores)
+    if (kit.fontes[0]) definirFonteGlobal(kit.fontes[0])
   }
 
   const inserirLogo = async (url: string) => {
@@ -130,6 +140,16 @@ export function PainelMarca() {
         </p>
       ) : (
         <>
+          {/* Aplicar a marca ao design inteiro (1 clique) */}
+          <button
+            onClick={aplicarMarcaAoDesign}
+            className="botao-primario flex w-full items-center justify-center gap-2"
+            title="Recolore o design com a paleta da marca e aplica a fonte principal"
+          >
+            <span>✨</span>
+            <span>Aplicar marca ao design</span>
+          </button>
+
           {/* Cores */}
           <section>
             <div className="mb-2 flex items-center justify-between">

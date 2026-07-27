@@ -10,7 +10,8 @@ import { useEditorStore } from '../../estado/useEditorStore'
 import { useProjetosStore } from '../../estado/useProjetosStore'
 import { useUiStore } from '../../estado/useUiStore'
 import { criarForma, criarGrafico, criarImagem, criarLinha, criarTabela, criarTexto } from '../../nucleo/elementos'
-import { TEMPLATES } from '../../dados/templates'
+import { CATEGORIAS_TEMPLATE, CategoriaTemplate, TEMPLATES } from '../../dados/templates'
+import { TEMAS_COR } from '../../dados/temas'
 import { PARES_FONTES, ParFonte } from '../../dados/fontes'
 import { FOTOS, ICONES, ItemGaleria, STICKERS } from '../../dados/galeria'
 import { carregarArquivoImagem, ImagemCarregada } from '../../utilitarios/imagem'
@@ -63,6 +64,7 @@ export function BarraFerramentas() {
   const adicionarElemento = useEditorStore((s) => s.adicionarElemento)
   const definirFerramenta = useEditorStore((s) => s.definirFerramenta)
   const aplicarTemplate = useEditorStore((s) => s.aplicarTemplate)
+  const recolorirDesignAtivo = useEditorStore((s) => s.recolorirDesignAtivo)
   const abrirProjeto = useEditorStore((s) => s.abrirProjeto)
   const resumos = useProjetosStore((s) => s.resumos)
   const carregarProjeto = useProjetosStore((s) => s.carregarProjeto)
@@ -72,6 +74,8 @@ export function BarraFerramentas() {
   const definirAba = useUiStore((s) => s.definirAba)
   const [recolhido, setRecolhido] = useState(false)
   const [uploads, setUploads] = useState<ImagemCarregada[]>([])
+  const [filtroCategoria, setFiltroCategoria] = useState<CategoriaTemplate | 'Todos'>('Todos')
+  const [buscaTemplate, setBuscaTemplate] = useState('')
 
   // Trocar de aba por fora (paleta de comandos) reabre o painel
   useEffect(() => {
@@ -180,44 +184,121 @@ export function BarraFerramentas() {
 
   const renderConteudo = () => {
     switch (aba) {
-      case 'Templates':
+      case 'Templates': {
+        const norm = (s: string) =>
+          s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        const q = norm(buscaTemplate.trim())
+        const templatesFiltrados = TEMPLATES.filter(
+          (t) =>
+            (filtroCategoria === 'Todos' || t.categoria === filtroCategoria) &&
+            (q === '' || norm(t.nome).includes(q) || norm(t.categoria).includes(q)),
+        )
+        const temasVisiveis = TEMAS_COR.filter((t) => t.cores.length > 0)
+        const embaralharCores = () => {
+          const t = temasVisiveis[Math.floor(Math.random() * temasVisiveis.length)]
+          if (t) recolorirDesignAtivo(t.cores)
+        }
         return (
-          <div>
-            <h3 className={classeRotuloSecao}>Templates</h3>
-            <div className="grid grid-cols-1 gap-2">
-              {TEMPLATES.map((tpl) => (
+          <div className="space-y-5">
+            {/* Estilos de cor: recolore o design inteiro com um clique */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className={classeRotuloSecao + ' mb-0'}>Estilos de cor</h3>
                 <button
-                  key={tpl.id}
-                  onClick={() =>
-                    aplicarTemplate(
-                      tpl.gerarElementos(projeto.larguraCanvas, projeto.alturaCanvas),
-                      tpl.corFundo,
-                    )
-                  }
-                  className="group overflow-hidden rounded-xl2 border border-superficie-200 bg-white text-left shadow-suave transition hover:-translate-y-0.5 hover:border-primaria-300 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900"
+                  onClick={embaralharCores}
+                  className="text-xs font-semibold text-primaria-600 transition hover:text-primaria-500 dark:text-primaria-300"
+                  title="Aplicar uma paleta aleatória ao design"
                 >
-                  <div className="flex h-16 w-full">
-                    {tpl.coresPreview.map((c, i) => (
-                      <span
-                        key={i}
-                        className="h-full flex-1"
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                  </div>
-                  <div className="p-2">
-                    <p className="truncate text-sm font-semibold text-superficie-900 dark:text-superficie-100">
-                      {tpl.nome}
-                    </p>
-                    <p className="text-xs text-superficie-700 dark:text-superficie-200">
-                      {tpl.categoria}
-                    </p>
-                  </div>
+                  🎲 Embaralhar
                 </button>
-              ))}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {temasVisiveis.map((tema) => (
+                  <button
+                    key={tema.id}
+                    onClick={() => recolorirDesignAtivo(tema.cores)}
+                    title={`Aplicar tema ${tema.nome}`}
+                    className="group rounded-xl2 border border-superficie-200 p-1 transition hover:-translate-y-0.5 hover:border-primaria-300 hover:shadow-painel dark:border-superficie-800"
+                  >
+                    <span className="flex h-7 overflow-hidden rounded-lg">
+                      {tema.cores.map((c, i) => (
+                        <span key={i} className="h-full flex-1" style={{ backgroundColor: c }} />
+                      ))}
+                    </span>
+                    <span className="mt-1 block truncate text-[10px] font-medium text-superficie-700 dark:text-superficie-300">
+                      {tema.nome}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Modelos com busca + filtro de categoria */}
+            <div>
+              <h3 className={classeRotuloSecao}>Modelos</h3>
+              <input
+                value={buscaTemplate}
+                onChange={(e) => setBuscaTemplate(e.target.value)}
+                placeholder="Buscar modelos…"
+                className="campo-texto mb-2"
+                aria-label="Buscar modelos"
+              />
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {(['Todos', ...CATEGORIAS_TEMPLATE] as const).map((cat) => {
+                  const ativo = cat === filtroCategoria
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setFiltroCategoria(cat)}
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+                        ativo
+                          ? 'bg-primaria-500 text-white'
+                          : 'bg-superficie-100 text-superficie-700 hover:bg-superficie-200 dark:bg-superficie-800 dark:text-superficie-200 dark:hover:bg-superficie-700'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  )
+                })}
+              </div>
+              {templatesFiltrados.length === 0 ? (
+                <p className="py-6 text-center text-xs text-superficie-500 dark:text-superficie-400">
+                  Nenhum modelo encontrado.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  {templatesFiltrados.map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      onClick={() =>
+                        aplicarTemplate(
+                          tpl.gerarElementos(projeto.larguraCanvas, projeto.alturaCanvas),
+                          tpl.corFundo,
+                        )
+                      }
+                      className="group overflow-hidden rounded-xl2 border border-superficie-200 bg-white text-left shadow-suave transition hover:-translate-y-0.5 hover:border-primaria-300 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900"
+                    >
+                      <div className="flex h-16 w-full">
+                        {tpl.coresPreview.map((c, i) => (
+                          <span key={i} className="h-full flex-1" style={{ backgroundColor: c }} />
+                        ))}
+                      </div>
+                      <div className="p-2">
+                        <p className="truncate text-sm font-semibold text-superficie-900 dark:text-superficie-100">
+                          {tpl.nome}
+                        </p>
+                        <p className="text-xs text-superficie-700 dark:text-superficie-200">
+                          {tpl.categoria}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )
+      }
 
       case 'Elementos':
         return (

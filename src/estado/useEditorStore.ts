@@ -10,6 +10,7 @@ import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import { Historico } from '../nucleo/historico'
 import { clonarElemento } from '../nucleo/elementos'
+import { recolorirDesign } from '../nucleo/recolorir'
 import { redimensionarElementos } from '../nucleo/ia/redimensionar'
 import { exportarDataUrl } from '../nucleo/exportacao'
 import { debounce } from '../utilitarios/tempo'
@@ -67,6 +68,11 @@ interface EstadoEditor {
     eixo: 'esquerda' | 'centroH' | 'direita' | 'topo' | 'centroV' | 'base',
   ) => void
   definirCorFundo: (cor: string) => void
+
+  /** Recolore o design da página ativa para uma paleta-alvo (temas/marca) */
+  recolorirDesignAtivo: (cores: string[]) => void
+  /** Aplica uma fonte a todos os textos da página ativa (Kit de Marca) */
+  definirFonteGlobal: (fonte: string) => void
 
   /** Redimensionamento mágico: novo tamanho de canvas + reflow das páginas */
   redimensionarProjeto: (largura: number, altura: number) => void
@@ -413,6 +419,20 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
 
     definirCorFundo: (cor) => {
       get().aplicarAlteracao((atual) => ({ ...atual, corFundo: cor }))
+    },
+
+    recolorirDesignAtivo: (cores) => {
+      if (cores.length === 0) return
+      get().aplicarAlteracao((atual) => recolorirDesign(atual.elementos, atual.corFundo, cores))
+    },
+
+    definirFonteGlobal: (fonte) => {
+      get().aplicarAlteracao((atual) => ({
+        ...atual,
+        elementos: atual.elementos.map((el) =>
+          el.tipo === 'texto' ? { ...el, fonte } : el,
+        ),
+      }))
     },
 
     redimensionarProjeto: (largura, altura) => {
