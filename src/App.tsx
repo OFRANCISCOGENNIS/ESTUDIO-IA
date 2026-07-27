@@ -12,6 +12,21 @@ import { Papel } from './nucleo/colab/tipos'
 
 const CHAVE_TEMA = 'dsp:tema'
 
+/**
+ * Tema da primeira visita. A escolha salva sempre manda; sem ela, seguimos
+ * o ambiente — o `data-theme` de quem incorpora a página (quando o estúdio
+ * roda embutido) e, na falta dele, a preferência do sistema.
+ */
+function preferenciaInicialEscura(): boolean {
+  const salvo = localStorage.getItem(CHAVE_TEMA)
+  if (salvo) return salvo === 'escuro'
+
+  const incorporado = document.documentElement.dataset.theme
+  if (incorporado) return incorporado === 'dark'
+
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
+}
+
 // Code splitting: o editor (com o motor de canvas) só carrega quando um
 // projeto é aberto — o dashboard fica leve e instantâneo.
 const Editor = lazy(() =>
@@ -34,9 +49,7 @@ function CarregandoEditor() {
 
 export default function App() {
   const projetoAberto = useEditorStore((s) => s.projeto !== null)
-  const [temaEscuro, setTemaEscuro] = useState(
-    () => localStorage.getItem(CHAVE_TEMA) === 'escuro',
-  )
+  const [temaEscuro, setTemaEscuro] = useState(preferenciaInicialEscura)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', temaEscuro)
