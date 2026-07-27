@@ -10,7 +10,7 @@ import { useEditorStore } from '../../estado/useEditorStore'
 import { useProjetosStore } from '../../estado/useProjetosStore'
 import { useUiStore } from '../../estado/useUiStore'
 import { criarForma, criarGrafico, criarImagem, criarLinha, criarTabela, criarTexto } from '../../nucleo/elementos'
-import { CATEGORIAS_TEMPLATE, CategoriaTemplate, TEMPLATES } from '../../dados/templates'
+import { CATEGORIAS_TEMPLATE, CategoriaTemplate, miniaturaTemplate, TEMPLATES } from '../../dados/templates'
 import { TEMAS_COR } from '../../dados/temas'
 import { PARES_FONTES, ParFonte } from '../../dados/fontes'
 import { FOTOS, ICONES, ItemGaleria, STICKERS } from '../../dados/galeria'
@@ -266,7 +266,7 @@ export function BarraFerramentas() {
                   Nenhum modelo encontrado.
                 </p>
               ) : (
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {templatesFiltrados.map((tpl) => (
                     <button
                       key={tpl.id}
@@ -276,18 +276,22 @@ export function BarraFerramentas() {
                           tpl.corFundo,
                         )
                       }
+                      title={`${tpl.nome} · ${tpl.categoria}`}
                       className="group overflow-hidden rounded-xl2 border border-superficie-200 bg-white text-left shadow-suave transition hover:-translate-y-0.5 hover:border-primaria-300 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900"
                     >
-                      <div className="flex h-16 w-full">
-                        {tpl.coresPreview.map((c, i) => (
-                          <span key={i} className="h-full flex-1" style={{ backgroundColor: c }} />
-                        ))}
+                      <div className="aspect-square w-full overflow-hidden bg-superficie-100 dark:bg-superficie-950">
+                        <img
+                          src={miniaturaTemplate(tpl)}
+                          alt={`Prévia de ${tpl.nome}`}
+                          loading="lazy"
+                          className="h-full w-full object-cover transition group-hover:scale-[1.03]"
+                        />
                       </div>
                       <div className="p-2">
-                        <p className="truncate text-sm font-semibold text-superficie-900 dark:text-superficie-100">
+                        <p className="truncate text-xs font-semibold text-superficie-900 dark:text-superficie-100">
                           {tpl.nome}
                         </p>
-                        <p className="text-xs text-superficie-700 dark:text-superficie-200">
+                        <p className="text-[10px] text-superficie-600 dark:text-superficie-300">
                           {tpl.categoria}
                         </p>
                       </div>

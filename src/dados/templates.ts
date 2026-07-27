@@ -4,8 +4,15 @@
 // proporcionalmente, para funcionar em qualquer formato.
 // =============================================================
 
-import { criarForma, criarLinha, criarTexto } from '../nucleo/elementos'
-import { Elemento } from '../tipos/projeto'
+import {
+  criarForma,
+  criarLinha,
+  criarTexto,
+  instantaneoContadorNomes,
+  restaurarContadorNomes,
+} from '../nucleo/elementos'
+import { paginaParaSvg } from '../nucleo/exportadores/svg'
+import { Elemento, Pagina } from '../tipos/projeto'
 
 export type CategoriaTemplate =
   | 'Social Media'
@@ -36,6 +43,27 @@ export const CATEGORIAS_TEMPLATE: CategoriaTemplate[] = [
   'Comida',
   'Moda',
 ]
+
+// ---------------------------------------------------------------
+// Miniatura real do modelo: renderiza os elementos do template em SVG
+// (vetorial, leve) e devolve um data URL cacheado. A geração não deve
+// mexer no contador de nomes global, então é preservado e restaurado.
+// ---------------------------------------------------------------
+const LADO_MINIATURA = 500
+const cacheMiniatura = new Map<string, string>()
+
+export function miniaturaTemplate(t: Template): string {
+  const emCache = cacheMiniatura.get(t.id)
+  if (emCache) return emCache
+  const snap = instantaneoContadorNomes()
+  const elementos = t.gerarElementos(LADO_MINIATURA, LADO_MINIATURA)
+  restaurarContadorNomes(snap)
+  const pagina = { corFundo: t.corFundo, elementos } as Pagina
+  const svg = paginaParaSvg(pagina, LADO_MINIATURA, LADO_MINIATURA)
+  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  cacheMiniatura.set(t.id, url)
+  return url
+}
 
 export const TEMPLATES: Template[] = [
   {

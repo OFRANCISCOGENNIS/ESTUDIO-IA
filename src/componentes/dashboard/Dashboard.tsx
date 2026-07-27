@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from 'react'
 import { PREDEFINICOES } from '../../dados/predefinicoes'
-import { TEMPLATES } from '../../dados/templates'
+import { miniaturaTemplate, TEMPLATES } from '../../dados/templates'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { ResumoProjeto, useProjetosStore } from '../../estado/useProjetosStore'
 import { usePlanoStore } from '../../estado/usePlanoStore'
@@ -337,10 +337,13 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
                     onClick={() => criarDeTemplate(tpl.id)}
                     className="group overflow-hidden rounded-xl2 border border-superficie-200 bg-white text-left shadow-suave transition-[transform,box-shadow] duration-micro ease-facil-saida hover:-translate-y-1 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900"
                   >
-                    <div className="flex aspect-video">
-                      {tpl.coresPreview.map((c, i) => (
-                        <span key={i} className="h-full flex-1" style={{ backgroundColor: c }} />
-                      ))}
+                    <div className="aspect-square w-full overflow-hidden bg-superficie-100 dark:bg-superficie-950">
+                      <img
+                        src={miniaturaTemplate(tpl)}
+                        alt={`Prévia de ${tpl.nome}`}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition duration-media ease-facil-saida group-hover:scale-105"
+                      />
                     </div>
                     <div className="p-3">
                       <p className="truncate text-sm font-semibold text-superficie-900 dark:text-superficie-100">{tpl.nome}</p>

@@ -25,6 +25,16 @@ export function reiniciarContadorNomes(): void {
   contadorNomes = {}
 }
 
+/** Snapshot do contador de nomes (para restaurar após gerações efêmeras) */
+export function instantaneoContadorNomes(): Record<string, number> {
+  return { ...contadorNomes }
+}
+
+/** Restaura o contador de nomes a partir de um snapshot */
+export function restaurarContadorNomes(snap: Record<string, number>): void {
+  contadorNomes = { ...snap }
+}
+
 function proximoNome(prefixo: string): string {
   contadorNomes[prefixo] = (contadorNomes[prefixo] ?? 0) + 1
   return `${prefixo} ${contadorNomes[prefixo]}`
