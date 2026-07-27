@@ -76,6 +76,14 @@ interface EstadoEditor {
 
   /** Redimensionamento mágico: novo tamanho de canvas + reflow das páginas */
   redimensionarProjeto: (largura: number, altura: number) => void
+  /**
+   * Magic Resize em massa: gera CÓPIAS do projeto em vários formatos
+   * (novos projetos salvos), sem alterar o design atual. Retorna quantas
+   * variações foram criadas.
+   */
+  gerarVariacoesFormato: (
+    formatos: { nome: string; largura: number; altura: number }[],
+  ) => number
 
   // ---- Páginas ----
   adicionarPagina: () => void
@@ -456,6 +464,42 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
         selecionados: [],
       })
       agendarSalvamento()
+    },
+
+    gerarVariacoesFormato: (formatos) => {
+      const { projeto } = get()
+      if (!projeto) return 0
+      const agora = new Date().toISOString()
+      let criados = 0
+      for (const f of formatos) {
+        if (f.largura === projeto.larguraCanvas && f.altura === projeto.alturaCanvas) continue
+        const paginas: Pagina[] = projeto.paginas.map((p) => ({
+          ...structuredClone(p),
+          id: nanoid(10),
+          elementos: redimensionarElementos(
+            p.elementos,
+            projeto.larguraCanvas,
+            projeto.alturaCanvas,
+            f.largura,
+            f.altura,
+          ),
+          comentarios: [],
+        }))
+        const copia: Projeto = {
+          ...projeto,
+          id: nanoid(12),
+          nome: `${projeto.nome} · ${f.nome}`,
+          larguraCanvas: f.largura,
+          alturaCanvas: f.altura,
+          paginas,
+          miniatura: undefined,
+          criadoEm: agora,
+          atualizadoEm: agora,
+        }
+        useProjetosStore.getState().salvarProjeto(copia)
+        criados++
+      }
+      return criados
     },
 
     // ---- Páginas ----

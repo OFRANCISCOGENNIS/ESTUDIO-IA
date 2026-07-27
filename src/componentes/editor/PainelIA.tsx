@@ -37,6 +37,7 @@ export function PainelIA() {
   const adicionarElemento = useEditorStore((s) => s.adicionarElemento)
   const definirCorFundo = useEditorStore((s) => s.definirCorFundo)
   const redimensionarProjeto = useEditorStore((s) => s.redimensionarProjeto)
+  const gerarVariacoesFormato = useEditorStore((s) => s.gerarVariacoesFormato)
   const plano = usePlanoStore((s) => s.plano)
   const definirPlano = usePlanoStore((s) => s.definirPlano)
 
@@ -50,6 +51,9 @@ export function PainelIA() {
   const [mwTom, setMwTom] = useState<TomTexto>('profissional')
   const [mwOpcoes, setMwOpcoes] = useState<string[]>([])
   const [carregandoMW, setCarregandoMW] = useState(false)
+
+  const [formatosSel, setFormatosSel] = useState<string[]>([])
+  const [msgVariacoes, setMsgVariacoes] = useState('')
 
   if (!projeto) return null
   const podeRedimensionar = recursoLiberado('redimensionar-magico', plano)
@@ -229,7 +233,7 @@ export function PainelIA() {
           📐 Redimensionar {!podeRedimensionar && <span className="text-primaria-500">· Pro</span>}
         </h3>
         <p className="mb-2 text-xs text-superficie-600 dark:text-superficie-400">
-          Adapta o design (todas as páginas) para outro formato, reorganizando os elementos.
+          Converte o design atual (todas as páginas) para outro formato, reorganizando os elementos.
         </p>
         <div className="grid grid-cols-2 gap-2">
           {PREDEFINICOES.slice(0, 6).map((pred) => {
@@ -252,6 +256,65 @@ export function PainelIA() {
           <p className="mt-2 text-xs text-superficie-500 dark:text-superficie-400">
             🔒 Disponível no plano Pro.
           </p>
+        )}
+      </section>
+
+      {/* Magic Resize — várias cópias de uma vez */}
+      <section className="border-t border-superficie-200 pt-4 dark:border-superficie-800">
+        <h3 className={classeSecao}>
+          ✨ Magic Resize {!podeRedimensionar && <span className="text-primaria-500">· Pro</span>}
+        </h3>
+        <p className="mb-2 text-xs text-superficie-600 dark:text-superficie-400">
+          Selecione formatos e gere <strong>cópias</strong> do design em cada tamanho, de uma vez —
+          o design atual continua intacto.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {PREDEFINICOES.map((pred) => {
+            const atual = pred.largura === projeto.larguraCanvas && pred.altura === projeto.alturaCanvas
+            const marcado = formatosSel.includes(pred.id)
+            return (
+              <button
+                key={pred.id}
+                onClick={() =>
+                  setFormatosSel((atualSel) =>
+                    marcado ? atualSel.filter((id) => id !== pred.id) : [...atualSel, pred.id],
+                  )
+                }
+                disabled={!podeRedimensionar || atual}
+                aria-pressed={marcado}
+                className={`flex items-center gap-2 rounded-lg border px-2 py-2 text-left text-xs transition disabled:opacity-40 ${
+                  marcado
+                    ? 'border-primaria-400 bg-primaria-50 dark:border-primaria-500 dark:bg-primaria-500/10'
+                    : 'border-superficie-200 enabled:hover:border-primaria-300 dark:border-superficie-800'
+                }`}
+                title={atual ? 'Formato atual' : `${pred.largura}×${pred.altura}`}
+              >
+                <span>{marcado ? '☑' : pred.icone}</span>
+                <span className="truncate text-superficie-800 dark:text-superficie-200">{pred.nome}</span>
+              </button>
+            )
+          })}
+        </div>
+        <button
+          onClick={() => {
+            const escolhidos = PREDEFINICOES.filter((p) => formatosSel.includes(p.id))
+            const n = gerarVariacoesFormato(
+              escolhidos.map((p) => ({ nome: p.nome, largura: p.largura, altura: p.altura })),
+            )
+            setMsgVariacoes(
+              n > 0
+                ? `✅ ${n} ${n === 1 ? 'variação criada' : 'variações criadas'} — veja na aba Projetos.`
+                : 'Selecione ao menos um formato diferente do atual.',
+            )
+            setFormatosSel([])
+          }}
+          disabled={!podeRedimensionar || formatosSel.length === 0}
+          className="botao-primario mt-2 w-full disabled:pointer-events-none disabled:opacity-40"
+        >
+          Gerar {formatosSel.length > 0 ? `${formatosSel.length} ` : ''}variações
+        </button>
+        {msgVariacoes && (
+          <p className="mt-2 text-xs text-superficie-600 dark:text-superficie-300">{msgVariacoes}</p>
         )}
       </section>
 
