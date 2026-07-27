@@ -303,7 +303,7 @@ export function PainelIA() {
             )
             setMsgVariacoes(
               n > 0
-                ? `✅ ${n} ${n === 1 ? 'variação criada' : 'variações criadas'} — veja na aba Projetos.`
+                ? `✅ ${n} ${n === 1 ? 'variação criada' : 'variações criadas'} — veja no seletor de projetos (topo).`
                 : 'Selecione ao menos um formato diferente do atual.',
             )
             setFormatosSel([])

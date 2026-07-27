@@ -99,6 +99,7 @@ export function CanvasEditor() {
   const pedidoEncaixe = useUiStore((s) => s.pedidoEncaixe)
   const mostrarGrade = useUiStore((s) => s.mostrarGrade)
   const alternarGrade = useUiStore((s) => s.alternarGrade)
+  const idRealcado = useUiStore((s) => s.idRealcado)
 
   const moverCursorColab = useColabStore((s) => s.moverCursor)
   const modoComentario = useColabStore((s) => s.modoComentario)
@@ -706,6 +707,29 @@ export function CanvasEditor() {
                 />
               ),
             )}
+
+          {/* Realce bidirecional: hover na camada → glow no elemento */}
+          {(() => {
+            const el = idRealcado
+              ? pagina.elementos.find((it) => it.id === idRealcado)
+              : null
+            if (!el || !el.visivel) return null
+            const d = dimensoes(el)
+            return (
+              <Rect
+                x={el.x}
+                y={el.y}
+                width={d.largura}
+                height={d.altura}
+                rotation={el.rotacao}
+                stroke="#7c4dff"
+                opacity={0.45}
+                strokeWidth={3 / zoom}
+                cornerRadius={4 / zoom}
+                listening={false}
+              />
+            )
+          })()}
 
           {/* Prévia do traço do lápis à mão livre */}
           {lapis && lapis.length > 1 && (

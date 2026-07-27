@@ -29,6 +29,8 @@ interface EstadoUi {
   buscaAberta: boolean
   /** Painel do verificador de acessibilidade */
   acessibilidadeAberta: boolean
+  /** Elemento realçado ao passar o mouse na camada (glow no canvas) */
+  idRealcado: string | null
   definirAba: (aba: string) => void
   definirLarguraPainel: (px: number) => void
   abrirPaleta: () => void
@@ -41,6 +43,7 @@ interface EstadoUi {
   fecharBusca: () => void
   abrirAcessibilidade: () => void
   fecharAcessibilidade: () => void
+  definirRealcado: (id: string | null) => void
 }
 
 export const useUiStore = create<EstadoUi>((set) => ({
@@ -52,6 +55,7 @@ export const useUiStore = create<EstadoUi>((set) => ({
   mostrarGrade: false,
   buscaAberta: false,
   acessibilidadeAberta: false,
+  idRealcado: null,
 
   definirAba: (aba) => set({ abaFerramentas: aba }),
 
@@ -71,6 +75,7 @@ export const useUiStore = create<EstadoUi>((set) => ({
   fecharBusca: () => set({ buscaAberta: false }),
   abrirAcessibilidade: () => set({ acessibilidadeAberta: true }),
   fecharAcessibilidade: () => set({ acessibilidadeAberta: false }),
+  definirRealcado: (id) => set({ idRealcado: id }),
 }))
 
 export const LIMITES_PAINEL = { min: MIN_PAINEL, max: MAX_PAINEL }

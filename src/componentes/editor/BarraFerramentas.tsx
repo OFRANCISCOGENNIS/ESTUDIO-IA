@@ -7,7 +7,6 @@
 
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
-import { useProjetosStore } from '../../estado/useProjetosStore'
 import { useUiStore } from '../../estado/useUiStore'
 import { criarForma, criarGrafico, criarImagem, criarLinha, criarTabela, criarTexto } from '../../nucleo/elementos'
 import { CATEGORIAS_TEMPLATE, CategoriaTemplate, miniaturaTemplate, TEMPLATES } from '../../dados/templates'
@@ -15,7 +14,6 @@ import { TEMAS_COR } from '../../dados/temas'
 import { PARES_FONTES, ParFonte } from '../../dados/fontes'
 import { FOTOS, ICONES, ItemGaleria, STICKERS } from '../../dados/galeria'
 import { carregarArquivoImagem, ImagemCarregada } from '../../utilitarios/imagem'
-import { tempoRelativo } from '../../utilitarios/tempo'
 import { PainelIA } from './PainelIA'
 import { PainelMarca } from './PainelMarca'
 import { PainelColab } from './PainelColab'
@@ -31,7 +29,6 @@ import {
   IconeLapis,
   IconePaleta,
   IconeQr,
-  IconePasta,
   IconePessoas,
   IconePredio,
   IconeTipoTexto,
@@ -41,21 +38,33 @@ import {
 /** Identificadores das abas da trilha lateral */
 type Aba =
   | 'Templates' | 'Elementos' | 'Texto' | 'Uploads' | 'Fotos'
-  | 'IA' | 'Marca' | 'Colaborar' | 'Time' | 'Projetos' | 'Apps'
+  | 'IA' | 'Marca' | 'Colaborar' | 'Time' | 'Apps'
 
-/** Abas exibidas na trilha, em ordem (ícones SVG stroke profissionais) */
-const ABAS: { id: Aba; Icone: (p: { tamanho?: number }) => JSX.Element }[] = [
-  { id: 'Templates', Icone: IconePaleta },
-  { id: 'Elementos', Icone: IconeFormas },
-  { id: 'Texto', Icone: IconeTipoTexto },
-  { id: 'Uploads', Icone: IconeUpload },
-  { id: 'Fotos', Icone: IconeFoto },
-  { id: 'IA', Icone: IconeFaisca },
-  { id: 'Marca', Icone: IconeAlvo },
-  { id: 'Colaborar', Icone: IconePessoas },
-  { id: 'Time', Icone: IconePredio },
-  { id: 'Projetos', Icone: IconePasta },
-  { id: 'Apps', Icone: IconeBlocos },
+/** Trilha em 4 grupos semânticos (lei de Hick) — "Projetos" mora no
+ *  seletor do breadcrumb da barra superior. */
+const GRUPOS_ABAS: { id: Aba; Icone: (p: { tamanho?: number }) => JSX.Element }[][] = [
+  // Criar
+  [
+    { id: 'Templates', Icone: IconePaleta },
+    { id: 'Elementos', Icone: IconeFormas },
+    { id: 'Texto', Icone: IconeTipoTexto },
+  ],
+  // Mídia
+  [
+    { id: 'Uploads', Icone: IconeUpload },
+    { id: 'Fotos', Icone: IconeFoto },
+    { id: 'IA', Icone: IconeFaisca },
+  ],
+  // Marca
+  [
+    { id: 'Marca', Icone: IconeAlvo },
+    { id: 'Apps', Icone: IconeBlocos },
+  ],
+  // Pessoas
+  [
+    { id: 'Colaborar', Icone: IconePessoas },
+    { id: 'Time', Icone: IconePredio },
+  ],
 ]
 
 /** Formas básicas oferecidas na aba Elementos */
@@ -81,9 +90,6 @@ export function BarraFerramentas() {
   const definirFerramenta = useEditorStore((s) => s.definirFerramenta)
   const aplicarTemplate = useEditorStore((s) => s.aplicarTemplate)
   const recolorirDesignAtivo = useEditorStore((s) => s.recolorirDesignAtivo)
-  const abrirProjeto = useEditorStore((s) => s.abrirProjeto)
-  const resumos = useProjetosStore((s) => s.resumos)
-  const carregarProjeto = useProjetosStore((s) => s.carregarProjeto)
 
   // Aba ativa mora no store de UI para a paleta de comandos poder trocá-la
   const aba = useUiStore((s) => s.abaFerramentas) as Aba
@@ -183,11 +189,6 @@ export function BarraFerramentas() {
     }
     // Permite reenviar o mesmo arquivo em seguida
     evento.target.value = ''
-  }
-
-  const abrirResumo = (id: string) => {
-    const p = carregarProjeto(id)
-    if (p) abrirProjeto(p)
   }
 
   // ---- Troca de aba: clicar na aba ativa recolhe o painel ----
@@ -604,48 +605,6 @@ export function BarraFerramentas() {
       case 'Time':
         return <PainelTime />
 
-      case 'Projetos':
-        return (
-          <div>
-            <h3 className={classeRotuloSecao}>Seus projetos</h3>
-            {resumos.length === 0 ? (
-              <p className="text-xs text-superficie-700 dark:text-superficie-300">
-                Nenhum projeto salvo ainda.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {resumos.map((resumo) => (
-                  <button
-                    key={resumo.id}
-                    onClick={() => abrirResumo(resumo.id)}
-                    className="flex w-full items-center gap-3 rounded-xl2 border border-superficie-200 bg-white p-2 text-left shadow-suave transition hover:-translate-y-0.5 hover:border-primaria-300 hover:shadow-painel dark:border-superficie-800 dark:bg-superficie-900"
-                  >
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-superficie-100 dark:bg-superficie-850">
-                      {resumo.miniatura ? (
-                        <img
-                          src={resumo.miniatura}
-                          alt={`Miniatura de ${resumo.nome}`}
-                          className="h-full w-full object-contain"
-                        />
-                      ) : (
-                        <span className="text-lg opacity-40">🎨</span>
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-superficie-900 dark:text-superficie-100">
-                        {resumo.nome}
-                      </span>
-                      <span className="block text-xs text-superficie-700 dark:text-superficie-300">
-                        {tempoRelativo(resumo.atualizadoEm)}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )
-
       case 'Apps':
         return (
           <div className="space-y-3">
@@ -677,33 +636,40 @@ export function BarraFerramentas() {
 
   return (
     <div className="flex h-full">
-      {/* Trilha vertical de abas */}
-      <div className="rolagem-fina flex w-16 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-superficie-200 bg-white py-2 dark:border-superficie-800 dark:bg-superficie-900">
-        {ABAS.map((item) => {
-          const ativa = item.id === aba && !recolhido
-          return (
-            <button
-              key={item.id}
-              onClick={() => selecionarAba(item.id)}
-              title={item.id}
-              aria-pressed={ativa}
-              className={`group relative flex w-14 flex-col items-center gap-1 rounded-xl2 py-2 text-[10px] font-medium transition-[background-color,color] duration-micro ease-facil-padrao ${
-                ativa
-                  ? 'bg-primaria-500/10 text-primaria-600 dark:bg-primaria-500/20 dark:text-primaria-300'
-                  : 'text-superficie-600 hover:bg-superficie-100 hover:text-superficie-900 dark:text-superficie-300 dark:hover:bg-superficie-800 dark:hover:text-superficie-100'
-              }`}
-            >
-              {/* Barra indicadora da aba ativa */}
-              <span
-                className={`absolute -left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-primaria-500 transition-opacity duration-micro ${
-                  ativa ? 'opacity-100' : 'opacity-0'
-                }`}
-              />
-              <item.Icone tamanho={20} />
-              <span>{item.id}</span>
-            </button>
-          )
-        })}
+      {/* Trilha vertical de abas em 4 grupos */}
+      <div className="rolagem-fina flex w-16 shrink-0 flex-col items-center overflow-y-auto border-r border-superficie-200 bg-white py-2 dark:border-superficie-800 dark:bg-superficie-900">
+        {GRUPOS_ABAS.map((grupo, indiceGrupo) => (
+          <div key={indiceGrupo} className="flex w-full flex-col items-center gap-0.5">
+            {indiceGrupo > 0 && (
+              <span className="my-1.5 h-px w-8 bg-superficie-200 dark:bg-superficie-700" />
+            )}
+            {grupo.map((item) => {
+              const ativa = item.id === aba && !recolhido
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => selecionarAba(item.id)}
+                  title={item.id}
+                  aria-pressed={ativa}
+                  className={`group relative flex w-14 flex-col items-center gap-1 rounded-xl2 py-2 text-[10px] font-medium transition-[background-color,color] duration-micro ease-facil-padrao ${
+                    ativa
+                      ? 'bg-primaria-500/10 text-primaria-600 dark:bg-primaria-500/20 dark:text-primaria-300'
+                      : 'text-superficie-600 hover:bg-superficie-100 hover:text-superficie-900 dark:text-superficie-300 dark:hover:bg-superficie-800 dark:hover:text-superficie-100'
+                  }`}
+                >
+                  {/* Barra indicadora da aba ativa */}
+                  <span
+                    className={`absolute -left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-primaria-500 transition-opacity duration-micro ${
+                      ativa ? 'opacity-100' : 'opacity-0'
+                    }`}
+                  />
+                  <item.Icone tamanho={20} />
+                  <span>{item.id}</span>
+                </button>
+              )
+            })}
+          </div>
+        ))}
       </div>
 
       {/* Painel expansível com o conteúdo da aba ativa */}

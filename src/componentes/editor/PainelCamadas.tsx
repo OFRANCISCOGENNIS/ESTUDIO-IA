@@ -11,10 +11,12 @@
 // `elementos.length - 1 - p`.
 // =============================================================
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
-import type { Elemento, TipoElemento } from '../../tipos/projeto'
+import { useUiStore } from '../../estado/useUiStore'
+import { paginaParaSvg } from '../../nucleo/exportadores/svg'
+import type { Elemento, Pagina, TipoElemento } from '../../tipos/projeto'
 import {
   IconeCaminhoEl,
   IconeElipseEl,
@@ -27,6 +29,50 @@ import {
   IconeTipoTexto,
   IconeTrianguloEl,
 } from '../icones/Icones'
+
+/** Caixa envolvente aproximada do elemento (sem rotação) */
+function caixaDoElemento(el: Elemento): { x: number; y: number; l: number; a: number } {
+  if (el.tipo === 'linha' || el.tipo === 'caminho') {
+    const xs = el.pontos.filter((_, i) => i % 2 === 0)
+    const ys = el.pontos.filter((_, i) => i % 2 === 1)
+    const minX = Math.min(...xs)
+    const minY = Math.min(...ys)
+    return {
+      x: el.x + minX,
+      y: el.y + minY,
+      l: Math.max(1, Math.max(...xs) - minX),
+      a: Math.max(1, Math.max(...ys) - minY),
+    }
+  }
+  if (el.tipo === 'texto') {
+    return { x: el.x, y: el.y, l: el.largura, a: el.tamanhoFonte * el.alturaLinha }
+  }
+  return { x: el.x, y: el.y, l: el.largura, a: el.altura }
+}
+
+/** Miniatura 24×24 renderizada do próprio elemento (SVG vetorial) */
+function MiniaturaCamada({ elemento }: { elemento: Elemento }) {
+  const url = useMemo(() => {
+    const caixa = caixaDoElemento(elemento)
+    const folga = Math.max(caixa.l, caixa.a) * 0.08
+    const pagina = {
+      corFundo: 'transparent',
+      elementos: [{ ...elemento, visivel: true, opacidade: 1, rotacao: 0 }],
+    } as Pagina
+    const svg = paginaParaSvg(pagina, 48, 48, {
+      x: caixa.x - folga,
+      y: caixa.y - folga,
+      largura: caixa.l + folga * 2,
+      altura: caixa.a + folga * 2,
+    })
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  }, [elemento])
+  return (
+    <span className="flex h-6 w-6 flex-none items-center justify-center overflow-hidden rounded-md border border-superficie-200 bg-white dark:border-superficie-700 dark:bg-superficie-800">
+      <img src={url} alt="" aria-hidden="true" className="h-full w-full object-contain" />
+    </span>
+  )
+}
 
 /** Ícone SVG exibido conforme o tipo do elemento */
 const ICONES_TIPO: Record<TipoElemento, JSX.Element> = {
@@ -50,6 +96,7 @@ export function PainelCamadas() {
   const atualizarElementos = useEditorStore((s) => s.atualizarElementos)
   const reordenarElemento = useEditorStore((s) => s.reordenarElemento)
   const moverCamada = useEditorStore((s) => s.moverCamada)
+  const definirRealcado = useUiStore((s) => s.definirRealcado)
 
   // Renomeação inline (duplo clique)
   const [editandoId, setEditandoId] = useState<string | null>(null)
@@ -155,6 +202,8 @@ export function PainelCamadas() {
                 setPosicaoAlvo(null)
               }}
               onClick={(e) => aoClicarLinha(e, elemento.id)}
+              onMouseEnter={() => definirRealcado(elemento.id)}
+              onMouseLeave={() => definirRealcado(null)}
               className={`group mb-1 flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 transition ${
                 selecionado
                   ? 'border-primaria-200 bg-primaria-50 dark:border-primaria-700 dark:bg-primaria-900'
@@ -163,10 +212,11 @@ export function PainelCamadas() {
                 idArrastado === elemento.id ? 'opacity-40' : ''
               }`}
             >
-              {/* Ícone do tipo */}
+              {/* Miniatura real do elemento + ícone do tipo */}
+              <MiniaturaCamada elemento={elemento} />
               <span
                 aria-hidden="true"
-                className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-superficie-100 text-xs font-bold text-superficie-700 dark:bg-superficie-800 dark:text-superficie-200"
+                className="flex-none text-superficie-400 dark:text-superficie-500"
               >
                 {ICONES_TIPO[elemento.tipo]}
               </span>

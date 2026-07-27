@@ -8,9 +8,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
+import { useProjetosStore } from '../../estado/useProjetosStore'
 import { usePlanoStore } from '../../estado/usePlanoStore'
 import { useUiStore } from '../../estado/useUiStore'
 import { recursoLiberado } from '../../dados/planos'
+import { tempoRelativo } from '../../utilitarios/tempo'
 import {
   IconeCompartilhar,
   IconeDesfazer,
@@ -42,6 +44,11 @@ const ESCALAS = [1, 2, 3]
 
 export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
   const projeto = useEditorStore((s) => s.projeto)
+  const paginaAtivaId = useEditorStore((s) => s.paginaAtivaId)
+  const selecionarPagina = useEditorStore((s) => s.selecionarPagina)
+  const abrirProjeto = useEditorStore((s) => s.abrirProjeto)
+  const resumos = useProjetosStore((s) => s.resumos)
+  const carregarProjeto = useProjetosStore((s) => s.carregarProjeto)
   const zoom = useEditorStore((s) => s.zoom)
   const estadoSalvamento = useEditorStore((s) => s.estadoSalvamento)
   const podeDesfazer = useEditorStore((s) => s.podeDesfazer)
@@ -60,6 +67,9 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
   const [nomeLocal, setNomeLocal] = useState(projeto?.nome ?? '')
   // Estado do menu de exportação
   const [menuAberto, setMenuAberto] = useState(false)
+  // Breadcrumb: seletor de página/projeto
+  const [navAberta, setNavAberta] = useState(false)
+  const refNav = useRef<HTMLDivElement>(null)
   const [formato, setFormato] = useState<FormatoExportacao>('png')
   const [escala, setEscala] = useState(1)
   const [exportando, setExportando] = useState(false)
@@ -84,7 +94,30 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
     return () => document.removeEventListener('mousedown', aoClicarFora)
   }, [menuAberto])
 
+  // Fecha o seletor de navegação ao clicar fora
+  useEffect(() => {
+    if (!navAberta) return
+    const aoClicarFora = (evento: MouseEvent) => {
+      if (refNav.current && !refNav.current.contains(evento.target as Node)) {
+        setNavAberta(false)
+      }
+    }
+    document.addEventListener('mousedown', aoClicarFora)
+    return () => document.removeEventListener('mousedown', aoClicarFora)
+  }, [navAberta])
+
   if (!projeto) return null
+
+  const indicePagina = Math.max(
+    0,
+    projeto.paginas.findIndex((p) => p.id === paginaAtivaId),
+  )
+
+  const trocarProjeto = (id: string) => {
+    const p = carregarProjeto(id)
+    if (p) abrirProjeto(p)
+    setNavAberta(false)
+  }
 
   const confirmarNome = () => {
     renomearProjeto(nomeLocal)
@@ -170,6 +203,95 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
         title="Renomear projeto"
         className="min-w-0 max-w-[16rem] rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm font-semibold text-superficie-900 outline-none transition hover:border-superficie-200 focus:border-primaria-400 focus:ring-2 focus:ring-primaria-100 dark:text-superficie-100 dark:hover:border-superficie-700 dark:focus:ring-primaria-900"
       />
+
+      {/* Breadcrumb: seletor de página e de projeto */}
+      <div className="relative hidden md:block" ref={refNav}>
+        <button
+          onClick={() => setNavAberta((a) => !a)}
+          aria-haspopup="menu"
+          aria-expanded={navAberta}
+          title="Trocar de página ou de projeto"
+          className="flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-xs font-medium text-superficie-600 transition-colors duration-micro hover:bg-superficie-100 hover:text-superficie-900 dark:text-superficie-300 dark:hover:bg-superficie-800 dark:hover:text-superficie-100"
+        >
+          <span aria-hidden="true" className="text-superficie-400">▸</span>
+          Página {indicePagina + 1} de {projeto.paginas.length}
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+
+        {navAberta && (
+          <div className="absolute left-0 top-full z-50 mt-2 w-64 rounded-xl2 border border-superficie-200 bg-[--sup-flutuante] p-1.5 shadow-flutuante dark:border-superficie-700">
+            <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-superficie-500">
+              Páginas
+            </p>
+            <div className="rolagem-fina max-h-40 overflow-y-auto">
+              {projeto.paginas.map((p, i) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    selecionarPagina(p.id)
+                    setNavAberta(false)
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] font-medium transition-colors duration-micro ${
+                    p.id === paginaAtivaId
+                      ? 'bg-primaria-500/10 text-primaria-600 dark:bg-primaria-500/20 dark:text-primaria-300'
+                      : 'text-superficie-800 hover:bg-superficie-100 dark:text-superficie-100 dark:hover:bg-superficie-800'
+                  }`}
+                >
+                  <span className="w-4 text-center text-[10px] tabular-nums text-superficie-500">{i + 1}</span>
+                  <span className="truncate">{p.nome}</span>
+                </button>
+              ))}
+            </div>
+
+            {resumos.filter((r) => r.id !== projeto.id).length > 0 && (
+              <>
+                <div className="mx-2 my-1 h-px bg-superficie-200 dark:bg-superficie-700" />
+                <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-superficie-500">
+                  Trocar de projeto
+                </p>
+                <div className="rolagem-fina max-h-44 overflow-y-auto">
+                  {resumos
+                    .filter((r) => r.id !== projeto.id)
+                    .slice(0, 6)
+                    .map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => trocarProjeto(r.id)}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition-colors duration-micro hover:bg-superficie-100 dark:hover:bg-superficie-800"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-superficie-100 dark:bg-superficie-850">
+                          {r.miniatura ? (
+                            <img src={r.miniatura} alt="" aria-hidden="true" className="h-full w-full object-contain" />
+                          ) : (
+                            <span className="text-xs opacity-40">🎨</span>
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-medium text-superficie-800 dark:text-superficie-100">
+                            {r.nome}
+                          </span>
+                          <span className="block text-[10px] text-superficie-500">
+                            {tempoRelativo(r.atualizadoEm)}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              </>
+            )}
+
+            <div className="mx-2 my-1 h-px bg-superficie-200 dark:bg-superficie-700" />
+            <button
+              onClick={fecharProjeto}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] font-medium text-superficie-800 transition-colors duration-micro hover:bg-superficie-100 dark:text-superficie-100 dark:hover:bg-superficie-800"
+            >
+              <IconeSetaEsquerda tamanho={14} /> Todos os projetos
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Desfazer / Refazer */}
       <div className="flex items-center">

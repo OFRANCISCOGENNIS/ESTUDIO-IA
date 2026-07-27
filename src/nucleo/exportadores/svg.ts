@@ -74,8 +74,15 @@ function atributosBorda(corBorda: string, espessura: number): string {
     : ''
 }
 
-/** Serializa uma página inteira como um documento SVG */
-export function paginaParaSvg(pagina: Pagina, largura: number, altura: number): string {
+/** Serializa uma página inteira como um documento SVG.
+ *  `janela` (opcional) recorta a visualização — usado nas miniaturas
+ *  de elemento do painel de camadas. */
+export function paginaParaSvg(
+  pagina: Pagina,
+  largura: number,
+  altura: number,
+  janela?: { x: number; y: number; largura: number; altura: number },
+): string {
   const defs: string[] = []
   const corpo: string[] = []
 
@@ -154,8 +161,11 @@ export function paginaParaSvg(pagina: Pagina, largura: number, altura: number): 
     corpo.push(abreG + interno + '</g>')
   })
 
+  const vb = janela
+    ? `${n(janela.x)} ${n(janela.y)} ${n(janela.largura)} ${n(janela.altura)}`
+    : `0 0 ${largura} ${altura}`
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${largura}" height="${altura}" viewBox="0 0 ${largura} ${altura}">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${largura}" height="${altura}" viewBox="${vb}">` +
     (defs.length ? `<defs>${defs.join('')}</defs>` : '') +
     `<rect width="${largura}" height="${altura}" fill="${escaparAtributo(pagina.corFundo)}"/>` +
     corpo.join('') +

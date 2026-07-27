@@ -7,7 +7,7 @@
 // Não depende do Konva — só lê/escreve no store.
 // =============================================================
 
-import { type ReactNode, useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 import { usePlanoStore } from '../../estado/usePlanoStore'
@@ -174,19 +174,42 @@ function classeToggle(ativo: boolean): string {
 
 // ---- Componentes auxiliares -------------------------------------
 
-/** Seção com título discreto e espaçamento vertical uniforme */
+/** Seção colapsável com título discreto e espaçamento vertical uniforme */
 function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
+  const [aberta, setAberta] = useState(true)
   return (
     <section className="space-y-3">
-      <h3 className="text-[0.7rem] font-semibold uppercase tracking-wide text-superficie-500 dark:text-superficie-400">
+      <button
+        type="button"
+        onClick={() => setAberta((a) => !a)}
+        aria-expanded={aberta}
+        className="flex w-full items-center justify-between text-[0.7rem] font-semibold uppercase tracking-wide text-superficie-500 transition-colors duration-micro hover:text-superficie-700 dark:text-superficie-400 dark:hover:text-superficie-200"
+      >
         {titulo}
-      </h3>
-      {children}
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className={`transition-transform duration-curta ease-facil-padrao ${aberta ? '' : '-rotate-90'}`}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {aberta && children}
     </section>
   )
 }
 
-/** Campo numérico rotulado */
+/**
+ * Campo numérico rotulado com "scrub": arrastar o rótulo na horizontal
+ * ajusta o valor (±1 por pixel; Shift = ±10), como nos editores pro.
+ */
 function CampoNumero({
   rotulo,
   valor,
@@ -200,9 +223,33 @@ function CampoNumero({
   passo?: number
   minimo?: number
 }) {
+  const scrub = useRef<{ base: number; xInicial: number } | null>(null)
+
+  const aoScrub = (e: React.PointerEvent) => {
+    if (!scrub.current) return
+    const delta = (e.clientX - scrub.current.xInicial) * (e.shiftKey ? 10 : 1)
+    let novo = scrub.current.base + delta * passo
+    if (minimo !== undefined) novo = Math.max(minimo, novo)
+    aoMudar(Math.round(novo * 100) / 100)
+  }
+
   return (
     <label className="block">
-      <span className="rotulo-campo">{rotulo}</span>
+      <span
+        className="rotulo-campo cursor-ew-resize select-none"
+        title="Arraste na horizontal para ajustar (Shift = ×10)"
+        onPointerDown={(e) => {
+          scrub.current = { base: valor, xInicial: e.clientX }
+          e.currentTarget.setPointerCapture(e.pointerId)
+        }}
+        onPointerMove={aoScrub}
+        onPointerUp={(e) => {
+          scrub.current = null
+          e.currentTarget.releasePointerCapture(e.pointerId)
+        }}
+      >
+        {rotulo}
+      </span>
       <input
         type="number"
         value={Number.isFinite(valor) ? Math.round(valor * 100) / 100 : 0}
@@ -215,6 +262,71 @@ function CampoNumero({
         className="campo-texto tabular-nums"
       />
     </label>
+  )
+}
+
+/** Largura × Altura com cadeado de proporção (estilo Figma) */
+function CamposDimensoes({
+  largura,
+  altura,
+  aoMudar,
+}: {
+  largura: number
+  altura: number
+  aoMudar: (mudancas: { largura?: number; altura?: number }) => void
+}) {
+  const [travada, setTravada] = useState(false)
+  const proporcao = altura > 0 ? largura / altura : 1
+  return (
+    <div className="flex items-end gap-1.5">
+      <div className="flex-1">
+        <CampoNumero
+          rotulo="Largura"
+          valor={largura}
+          minimo={1}
+          aoMudar={(v) => {
+            const l = Math.max(1, v)
+            aoMudar(travada ? { largura: l, altura: Math.max(1, l / proporcao) } : { largura: l })
+          }}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => setTravada((t) => !t)}
+        aria-pressed={travada}
+        title={travada ? 'Proporção travada — clique para liberar' : 'Travar proporção'}
+        className={`mb-0.5 flex h-8 w-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-micro ${
+          travada
+            ? 'bg-primaria-500/15 text-primaria-600 dark:text-primaria-300'
+            : 'text-superficie-400 hover:bg-superficie-100 hover:text-superficie-600 dark:hover:bg-superficie-800'
+        }`}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+          {travada ? (
+            <>
+              <rect x="5" y="11" width="14" height="9" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+            </>
+          ) : (
+            <>
+              <rect x="5" y="11" width="14" height="9" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 7.5-1.9" />
+            </>
+          )}
+        </svg>
+      </button>
+      <div className="flex-1">
+        <CampoNumero
+          rotulo="Altura"
+          valor={altura}
+          minimo={1}
+          aoMudar={(v) => {
+            const a = Math.max(1, v)
+            aoMudar(travada ? { altura: a, largura: Math.max(1, a * proporcao) } : { altura: a })
+          }}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -1121,24 +1233,11 @@ export function PainelPropriedades() {
               elementoUnico.tipo === 'triangulo' ||
               elementoUnico.tipo === 'estrela') && (
               <Secao titulo="Forma">
-                <div className="grid grid-cols-2 gap-3">
-                  <CampoNumero
-                    rotulo="Largura"
-                    valor={elementoUnico.largura}
-                    minimo={1}
-                    aoMudar={(valor) =>
-                      atualizarElementos([elementoUnico.id], { largura: Math.max(1, valor) })
-                    }
-                  />
-                  <CampoNumero
-                    rotulo="Altura"
-                    valor={elementoUnico.altura}
-                    minimo={1}
-                    aoMudar={(valor) =>
-                      atualizarElementos([elementoUnico.id], { altura: Math.max(1, valor) })
-                    }
-                  />
-                </div>
+                <CamposDimensoes
+                  largura={elementoUnico.largura}
+                  altura={elementoUnico.altura}
+                  aoMudar={(mudancas) => atualizarElementos([elementoUnico.id], mudancas)}
+                />
 
                 {/* Preenchimento: sólido ou gradiente */}
                 <div className="grid grid-cols-2 gap-2">
