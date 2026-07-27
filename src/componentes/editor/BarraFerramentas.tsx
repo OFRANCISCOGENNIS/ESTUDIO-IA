@@ -212,6 +212,23 @@ export function BarraFerramentas() {
     evento.target.value = ''
   }
 
+  // ---- Navegação por setas na trilha (padrão tablist, §10.3) ----
+  const aoTeclarNaTrilha = (e: React.KeyboardEvent) => {
+    const ordem = GRUPOS_ABAS.flat().map((i) => i.id)
+    const atual = ordem.indexOf(aba)
+    let destino = -1
+    if (e.key === 'ArrowDown') destino = (atual + 1) % ordem.length
+    else if (e.key === 'ArrowUp') destino = (atual - 1 + ordem.length) % ordem.length
+    else if (e.key === 'Home') destino = 0
+    else if (e.key === 'End') destino = ordem.length - 1
+    if (destino < 0) return
+    e.preventDefault()
+    const id = ordem[destino]
+    definirAba(id)
+    setRecolhido(false)
+    refsAbas.current[id]?.focus()
+  }
+
   // ---- Troca de aba: clicar na aba ativa recolhe o painel ----
   const selecionarAba = (id: Aba) => {
     if (id === aba) {
@@ -664,6 +681,10 @@ export function BarraFerramentas() {
       {/* Trilha vertical de abas em 4 grupos */}
       <div
         ref={refTrilha}
+        role="tablist"
+        aria-orientation="vertical"
+        aria-label="Ferramentas"
+        onKeyDown={aoTeclarNaTrilha}
         className="rolagem-fina relative flex w-16 shrink-0 flex-col items-center overflow-y-auto border-r border-superficie-200 bg-white py-2 dark:border-superficie-800 dark:bg-superficie-900"
       >
         {/* Indicador único que DESLIZA entre as abas (§7.2) — nunca pisca */}
@@ -689,7 +710,10 @@ export function BarraFerramentas() {
                   ref={(no) => (refsAbas.current[item.id] = no)}
                   onClick={() => selecionarAba(item.id)}
                   title={item.id}
-                  aria-pressed={ativa}
+                  role="tab"
+                  aria-selected={ativa}
+                  // Roving tabindex: só a aba ativa entra na ordem de Tab
+                  tabIndex={item.id === aba ? 0 : -1}
                   className={`group relative flex w-14 flex-col items-center gap-1 rounded-xl2 py-2 text-[10px] font-medium transition-[background-color,color] duration-micro ease-facil-padrao ${
                     ativa
                       ? 'bg-primaria-500/10 text-primaria-600 dark:bg-primaria-500/20 dark:text-primaria-300'

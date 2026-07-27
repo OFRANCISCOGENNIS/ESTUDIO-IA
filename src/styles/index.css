@@ -121,12 +121,23 @@ body {
       disabled:pointer-events-none disabled:opacity-40
       dark:bg-superficie-800 dark:text-superficie-100 dark:hover:bg-superficie-700;
   }
+  /* Alvo de toque ≥44×44px (§10.4) via ::after — o visual segue 36px,
+     mas a área clicável/tocável cresce sem mexer no layout. */
   .botao-icone {
-    @apply flex h-9 w-9 items-center justify-center rounded-lg text-superficie-700
+    @apply relative flex h-9 w-9 items-center justify-center rounded-lg text-superficie-700
       transition-[background-color,transform] duration-micro ease-facil-padrao
       hover:bg-primaria-500/10 active:scale-95
       disabled:opacity-30 disabled:hover:bg-transparent
       dark:text-superficie-200 dark:hover:bg-primaria-500/20;
+  }
+  .botao-icone::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
   }
   .campo-texto {
     @apply w-full rounded-lg border border-superficie-200 bg-white px-3 py-2 text-sm text-superficie-900

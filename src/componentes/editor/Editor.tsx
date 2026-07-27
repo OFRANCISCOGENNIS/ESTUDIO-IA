@@ -14,7 +14,9 @@ import { BarraFerramentas } from './BarraFerramentas'
 import { BarraFlutuante } from './BarraFlutuante'
 import { BarraPaginas } from './BarraPaginas'
 import { BarraSuperior } from './BarraSuperior'
+import { CamadaFocoTeclado } from './CamadaFocoTeclado'
 import { CanvasEditor } from './CanvasEditor'
+import { DialogoAtalhos } from './DialogoAtalhos'
 import { DialogoBusca } from './DialogoBusca'
 import { PainelAcessibilidade } from './PainelAcessibilidade'
 import { PaletaComandos } from './PaletaComandos'
@@ -65,6 +67,7 @@ export function Editor({ temaEscuro, aoAlternarTema }: Props) {
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="relative flex-1 overflow-hidden">
             <CanvasEditor />
+            <CamadaFocoTeclado />
             <BarraFlutuante />
           </div>
           <BarraPaginas />
@@ -93,6 +96,7 @@ export function Editor({ temaEscuro, aoAlternarTema }: Props) {
       </div>
       <PaletaComandos />
       <DialogoBusca />
+      <DialogoAtalhos />
       <PainelAcessibilidade />
       {apresentando && <ModoApresentacao />}
     </div>

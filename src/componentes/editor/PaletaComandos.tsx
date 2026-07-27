@@ -49,6 +49,7 @@ export function PaletaComandos() {
   const abrirBusca = useUiStore((s) => s.abrirBusca)
   const abrirAcessibilidade = useUiStore((s) => s.abrirAcessibilidade)
   const alternarGrade = useUiStore((s) => s.alternarGrade)
+  const abrirAtalhos = useUiStore((s) => s.abrirAtalhos)
 
   const projeto = useEditorStore((s) => s.projeto)
   const selecionados = useEditorStore((s) => s.selecionados)
@@ -141,6 +142,7 @@ export function PaletaComandos() {
       { id: 'fer-busca', secao: 'Ferramentas', titulo: 'Localizar e substituir', atalho: 'Ctrl+F', executar: abrirBusca },
       { id: 'fer-acessibilidade', secao: 'Ferramentas', titulo: 'Verificar acessibilidade (contraste)', executar: abrirAcessibilidade },
       { id: 'fer-grade', secao: 'Ferramentas', titulo: 'Mostrar/ocultar grade', executar: alternarGrade },
+      { id: 'fer-atalhos', secao: 'Ferramentas', titulo: 'Ver atalhos de teclado', atalho: '?', executar: abrirAtalhos },
 
       // ---- Organizar (dependem de seleção) ----
       { id: 'org-agrupar', secao: 'Organizar', titulo: 'Agrupar seleção', atalho: 'Ctrl+G', inativo: selecionados.length < 2, executar: agruparSelecionados },
@@ -169,7 +171,7 @@ export function PaletaComandos() {
     definirAba, fechar, adicionarElemento, definirTextoEmEdicao,
     duplicarSelecionados, removerSelecionados, moverCamada, alinharSelecionados,
     agruparSelecionados, desagruparSelecionados, distribuirSelecionados, definirFerramenta,
-    abrirBusca, abrirAcessibilidade, alternarGrade,
+    abrirBusca, abrirAcessibilidade, alternarGrade, abrirAtalhos,
     adicionarPagina, duplicarPagina, iniciarApresentacao, definirZoom, desfazer, refazer,
   ])
 

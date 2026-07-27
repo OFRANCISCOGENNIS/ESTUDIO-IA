@@ -22,10 +22,28 @@ export function useAtalhosTeclado() {
           alvo.isContentEditable)
       if (emCampo || estado.textoEmEdicao) return
 
+      // "?" abre a lista de atalhos (funciona em qualquer papel, §10.3)
+      if (e.key === '?') {
+        e.preventDefault()
+        useUiStore.getState().abrirAtalhos()
+        return
+      }
+
       // Sem permissão de edição: só limpar seleção
       if (useColabStore.getState().papel !== 'editor') {
         if (e.key === 'Escape') estado.limparSelecao()
         return
+      }
+
+      // Enter entra na edição do texto selecionado (§10.3)
+      if (e.key === 'Enter' && estado.selecionados.length === 1) {
+        const pagina = estado.projeto?.paginas.find((p) => p.id === estado.paginaAtivaId)
+        const alvo = pagina?.elementos.find((el) => el.id === estado.selecionados[0])
+        if (alvo?.tipo === 'texto' && !alvo.bloqueado) {
+          e.preventDefault()
+          estado.definirTextoEmEdicao(alvo.id)
+          return
+        }
       }
 
       const comModificador = e.ctrlKey || e.metaKey

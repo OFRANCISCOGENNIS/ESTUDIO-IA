@@ -31,6 +31,8 @@ interface EstadoUi {
   acessibilidadeAberta: boolean
   /** Elemento realçado ao passar o mouse na camada (glow no canvas) */
   idRealcado: string | null
+  /** Modal de atalhos de teclado (tecla "?") */
+  atalhosAbertos: boolean
   definirAba: (aba: string) => void
   definirLarguraPainel: (px: number) => void
   abrirPaleta: () => void
@@ -44,6 +46,8 @@ interface EstadoUi {
   abrirAcessibilidade: () => void
   fecharAcessibilidade: () => void
   definirRealcado: (id: string | null) => void
+  abrirAtalhos: () => void
+  fecharAtalhos: () => void
 }
 
 export const useUiStore = create<EstadoUi>((set) => ({
@@ -56,6 +60,7 @@ export const useUiStore = create<EstadoUi>((set) => ({
   buscaAberta: false,
   acessibilidadeAberta: false,
   idRealcado: null,
+  atalhosAbertos: false,
 
   definirAba: (aba) => set({ abaFerramentas: aba }),
 
@@ -76,6 +81,8 @@ export const useUiStore = create<EstadoUi>((set) => ({
   abrirAcessibilidade: () => set({ acessibilidadeAberta: true }),
   fecharAcessibilidade: () => set({ acessibilidadeAberta: false }),
   definirRealcado: (id) => set({ idRealcado: id }),
+  abrirAtalhos: () => set({ atalhosAbertos: true }),
+  fecharAtalhos: () => set({ atalhosAbertos: false }),
 }))
 
 export const LIMITES_PAINEL = { min: MIN_PAINEL, max: MAX_PAINEL }
