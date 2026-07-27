@@ -11,8 +11,8 @@
 
 import Konva from 'konva'
 import { KonvaEventObject } from 'konva/lib/Node'
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Layer, Line, Rect, Stage, Text, Transformer } from 'react-konva'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Group, Layer, Line, Rect, Stage, Transformer } from 'react-konva'
 import {
   criarCaminho,
   criarForma,
@@ -54,6 +54,9 @@ interface Guia {
   ancora: number
   rotulo: string
 }
+
+/** Máximo de guias simultâneas (3 alvos por eixo × 2 eixos) */
+const MAX_GUIAS = 6
 
 /** Dimensões aproximadas (sem rotação) para snap e marquee */
 function dimensoes(elemento: Elemento): { largura: number; altura: number } {
@@ -116,7 +119,10 @@ export function CanvasEditor() {
   const [tamanho, setTamanho] = useState({ largura: 0, altura: 0 })
   const [espacoPressionado, setEspacoPressionado] = useState(false)
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
-  const [guias, setGuias] = useState<Guia[]>([])
+  // Guias são desenhadas IMPERATIVAMENTE (§11.4): a cada frame de arraste
+  // atualizamos nós Konva de um pool fixo — zero re-render do React.
+  const grupoGuiasRef = useRef<Konva.Group | null>(null)
+  const poolGuiasRef = useRef<{ linha: Konva.Line; rotulo: Konva.Text }[]>([])
   const [caneta, setCaneta] = useState<{ x: number; y: number }[]>([])
   const [canetaMouse, setCanetaMouse] = useState<{ x: number; y: number } | null>(null)
   const [lapis, setLapis] = useState<{ x: number; y: number }[] | null>(null)
@@ -248,6 +254,65 @@ export function CanvasEditor() {
     })
     return () => registrarExportador(null)
   }, [projeto])
+
+  /** Cria (uma única vez) o pool de nós de guia dentro do grupo dedicado */
+  const garantirPoolGuias = useCallback(() => {
+    const grupo = grupoGuiasRef.current
+    if (!grupo || poolGuiasRef.current.length > 0) return poolGuiasRef.current
+    const pool = Array.from({ length: MAX_GUIAS }, () => {
+      const linha = new Konva.Line({
+        stroke: COR_GUIA,
+        listening: false,
+        visible: false,
+        perfectDrawEnabled: false,
+      })
+      const rotulo = new Konva.Text({
+        fill: COR_GUIA,
+        fontStyle: 'bold',
+        listening: false,
+        visible: false,
+        perfectDrawEnabled: false,
+      })
+      grupo.add(linha)
+      grupo.add(rotulo)
+      return { linha, rotulo }
+    })
+    poolGuiasRef.current = pool
+    return pool
+  }, [])
+
+  /** Pinta as guias sem passar pelo React (chamado a cada dragmove) */
+  const pintarGuias = useCallback(
+    (guias: Guia[], zoomAtual: number, larguraCanvas: number, alturaCanvas: number) => {
+      const pool = garantirPoolGuias()
+      if (pool.length === 0) return
+      for (let i = 0; i < pool.length; i++) {
+        const { linha, rotulo } = pool[i]
+        const g = guias[i]
+        if (!g) {
+          linha.visible(false)
+          rotulo.visible(false)
+          continue
+        }
+        linha.points(
+          g.tipo === 'v'
+            ? [g.pos, 0, g.pos, alturaCanvas]
+            : [0, g.pos, larguraCanvas, g.pos],
+        )
+        linha.strokeWidth(1 / zoomAtual)
+        linha.dash([4 / zoomAtual, 4 / zoomAtual])
+        linha.visible(true)
+
+        rotulo.text(g.rotulo)
+        rotulo.fontSize(12 / zoomAtual)
+        rotulo.x((g.tipo === 'v' ? g.pos : g.ancora) + 6 / zoomAtual)
+        rotulo.y((g.tipo === 'v' ? g.ancora : g.pos) + 6 / zoomAtual)
+        rotulo.visible(true)
+      }
+      grupoGuiasRef.current?.getLayer()?.batchDraw()
+    },
+    [garantirPoolGuias],
+  )
 
   const registrarNo = useMemo(
     () => (id: string, no: Konva.Node | null) => {
@@ -541,7 +606,8 @@ export function CanvasEditor() {
         }
       }
     }
-    setGuias(novasGuias)
+    // Pintura imperativa — sem setState, sem re-render (§11.4)
+    pintarGuias(novasGuias, zoom, projeto.larguraCanvas, projeto.alturaCanvas)
 
     // Multi-drag: os demais selecionados seguem o nó arrastado ao vivo
     const grupo = arrasteGrupo.current
@@ -559,7 +625,7 @@ export function CanvasEditor() {
   }
 
   const aoTerminarArrasteStage = (e: KonvaEventObject<DragEvent>) => {
-    setGuias([])
+    pintarGuias([], zoom, projeto.larguraCanvas, projeto.alturaCanvas)
     definirArrastando(false)
     const stage = stageRef.current
     if (stage && e.target === stage) {
@@ -648,10 +714,10 @@ export function CanvasEditor() {
         onDragMove={aoArrastarNoStage}
         onDragEnd={aoTerminarArrasteStage}
       >
-        {/* Camada de conteúdo: artboard + elementos */}
-        <Layer>
+        {/* Camada 1 — fundo estático: só o artboard. Isolada para não
+            ser repintada quando os elementos mudam (§11.4). */}
+        <Layer listening={false}>
           <Rect
-            name="fundo-artboard"
             x={0}
             y={0}
             width={projeto.larguraCanvas}
@@ -661,6 +727,22 @@ export function CanvasEditor() {
             shadowOpacity={0.18}
             shadowBlur={24}
             shadowOffsetY={6}
+            perfectDrawEnabled={false}
+            shadowForStrokeEnabled={false}
+          />
+        </Layer>
+
+        {/* Camada 2 — conteúdo: elementos do usuário. Um alvo de clique
+            transparente cobre o artboard (o fundo real vive na camada
+            estática, que não escuta eventos). */}
+        <Layer>
+          <Rect
+            name="fundo-artboard"
+            x={0}
+            y={0}
+            width={projeto.larguraCanvas}
+            height={projeto.alturaCanvas}
+            perfectDrawEnabled={false}
           />
           {pagina.elementos.map((elemento) => (
             <ElementoKonva
@@ -744,29 +826,9 @@ export function CanvasEditor() {
             />
           )}
 
-          {guias.map((guia, i) => (
-            <Fragment key={i}>
-              <Line
-                points={
-                  guia.tipo === 'v'
-                    ? [guia.pos, 0, guia.pos, projeto.alturaCanvas]
-                    : [0, guia.pos, projeto.larguraCanvas, guia.pos]
-                }
-                stroke={COR_GUIA}
-                strokeWidth={1 / zoom}
-                dash={[4 / zoom, 4 / zoom]}
-              />
-              <Text
-                text={guia.rotulo}
-                x={guia.tipo === 'v' ? guia.pos + 6 / zoom : guia.ancora + 6 / zoom}
-                y={guia.tipo === 'v' ? guia.ancora + 6 / zoom : guia.pos + 6 / zoom}
-                fontSize={12 / zoom}
-                fontStyle="bold"
-                fill={COR_GUIA}
-                listening={false}
-              />
-            </Fragment>
-          ))}
+          {/* Guias de snap: grupo vazio para o React, preenchido
+              imperativamente durante o arraste (§11.4) */}
+          <Group ref={grupoGuiasRef} listening={false} />
           {marquee && (
             <Rect
               x={marquee.x}

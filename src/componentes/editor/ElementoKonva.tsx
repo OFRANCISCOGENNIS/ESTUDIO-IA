@@ -148,6 +148,11 @@ export function ElementoKonva({
     visible: elemento.visivel,
     draggable: permitirArraste && !elemento.bloqueado,
     globalCompositeOperation: composicao(elemento.mistura),
+    // Perf (§11.4): objetos travados/ocultos saem do grafo de hit-test;
+    // desenho "perfeito" e sombra em stroke são caros e imperceptíveis aqui.
+    listening: elemento.visivel && !elemento.bloqueado,
+    perfectDrawEnabled: false,
+    shadowForStrokeEnabled: false,
     onMouseDown: (e: KonvaEventObject<MouseEvent>) => aoSelecionar(elemento.id, e),
     onTap: (e: KonvaEventObject<TouchEvent>) => aoSelecionar(elemento.id, e),
     onDragEnd: aoFinalizarArraste,

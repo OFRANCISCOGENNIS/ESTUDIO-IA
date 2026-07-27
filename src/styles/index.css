@@ -88,6 +88,18 @@ body {
   }
 }
 
+/* Listas/grades longas (§11.5): o navegador pula layout e pintura do
+   que está fora da viewport, reservando a altura para o scroll ficar
+   estável (CLS = 0). Alternativa nativa à virtualização por biblioteca. */
+.fora-da-tela-barata {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 44px;
+}
+.fora-da-tela-barata-cartao {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 220px;
+}
+
 /* Barra de rolagem discreta nos painéis */
 .rolagem-fina::-webkit-scrollbar {
   width: 8px;

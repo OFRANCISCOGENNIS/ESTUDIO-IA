@@ -202,10 +202,14 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     useProjetosStore.getState().salvarProjeto(salvo)
     set({ projeto: salvo, estadoSalvamento: 'salvo' })
   }
-  const persistirComDebounce = debounce(persistir, 2000)
-  const agendarSalvamento = () => {
+  // Debounce por tipo de edição (§11.2): arrastar produz muitos eventos
+  // seguidos e pode salvar rápido; digitar precisa de mais folga.
+  const persistirRapido = debounce(persistir, 400)
+  const persistirNormal = debounce(persistir, 800)
+  const agendarSalvamento = (ritmo: 'rapido' | 'normal' = 'normal') => {
     set({ estadoSalvamento: 'pendente' })
-    persistirComDebounce()
+    if (ritmo === 'rapido') persistirRapido()
+    else persistirNormal()
   }
 
   const atualizarFlagsHistorico = () =>
@@ -215,6 +219,7 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
   const mutarPaginaAtiva = (
     transformar: (pagina: Pagina) => Pagina,
     registrarHistorico = true,
+    ritmo: 'rapido' | 'normal' = 'normal',
   ) => {
     const { projeto, paginaAtivaId } = get()
     if (!projeto) return
@@ -227,7 +232,7 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     const paginas = [...projeto.paginas]
     paginas[indice] = transformar(pagina)
     set({ projeto: { ...projeto, paginas } })
-    agendarSalvamento()
+    agendarSalvamento(ritmo)
   }
 
   /** Elementos da página ativa (ou lista vazia) */
@@ -318,12 +323,17 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     },
 
     atualizarElementos: (ids, mudancas) => {
-      get().aplicarAlteracao((atual) => ({
-        ...atual,
-        elementos: atual.elementos.map((elemento) =>
-          ids.includes(elemento.id) ? ({ ...elemento, ...mudancas } as Elemento) : elemento,
-        ),
-      }))
+      // Vem de arraste/transformação na maioria das vezes: salva rápido
+      mutarPaginaAtiva(
+        (pagina) => ({
+          ...pagina,
+          elementos: pagina.elementos.map((elemento) =>
+            ids.includes(elemento.id) ? ({ ...elemento, ...mudancas } as Elemento) : elemento,
+          ),
+        }),
+        true,
+        'rapido',
+      )
     },
 
     removerSelecionados: () => {

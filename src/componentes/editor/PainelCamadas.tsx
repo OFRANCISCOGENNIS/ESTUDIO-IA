@@ -204,7 +204,7 @@ export function PainelCamadas() {
               onClick={(e) => aoClicarLinha(e, elemento.id)}
               onMouseEnter={() => definirRealcado(elemento.id)}
               onMouseLeave={() => definirRealcado(null)}
-              className={`group mb-1 flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 transition ${
+              className={`fora-da-tela-barata group mb-1 flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 transition ${
                 selecionado
                   ? 'border-primaria-200 bg-primaria-50 dark:border-primaria-700 dark:bg-primaria-900'
                   : 'border-transparent hover:bg-superficie-100 dark:hover:bg-superficie-800'
