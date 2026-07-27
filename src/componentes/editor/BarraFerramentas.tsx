@@ -5,9 +5,10 @@
 // leem/escrevem no store; não conhecem o Konva.
 // =============================================================
 
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { useProjetosStore } from '../../estado/useProjetosStore'
+import { useUiStore } from '../../estado/useUiStore'
 import { criarForma, criarGrafico, criarImagem, criarLinha, criarTabela, criarTexto } from '../../nucleo/elementos'
 import { TEMPLATES } from '../../dados/templates'
 import { PARES_FONTES, ParFonte } from '../../dados/fontes'
@@ -66,9 +67,16 @@ export function BarraFerramentas() {
   const resumos = useProjetosStore((s) => s.resumos)
   const carregarProjeto = useProjetosStore((s) => s.carregarProjeto)
 
-  const [aba, setAba] = useState<Aba>('Templates')
+  // Aba ativa mora no store de UI para a paleta de comandos poder trocá-la
+  const aba = useUiStore((s) => s.abaFerramentas) as Aba
+  const definirAba = useUiStore((s) => s.definirAba)
   const [recolhido, setRecolhido] = useState(false)
   const [uploads, setUploads] = useState<ImagemCarregada[]>([])
+
+  // Trocar de aba por fora (paleta de comandos) reabre o painel
+  useEffect(() => {
+    setRecolhido(false)
+  }, [aba])
 
   // Sem projeto aberto não há canvas para editar
   if (!projeto) return null
@@ -165,7 +173,7 @@ export function BarraFerramentas() {
     if (id === aba) {
       setRecolhido((r) => !r)
     } else {
-      setAba(id)
+      definirAba(id)
       setRecolhido(false)
     }
   }

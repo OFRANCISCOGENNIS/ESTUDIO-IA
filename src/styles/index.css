@@ -139,6 +139,18 @@ body {
   }
 }
 
+/* Entrada da paleta de comandos (surge de baixo com leve escala) */
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Transições entre slides no modo apresentação */
 .transicao-fade {
   animation: ap-fade 420ms ease both;

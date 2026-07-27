@@ -11,8 +11,8 @@
 
 import Konva from 'konva'
 import { KonvaEventObject } from 'konva/lib/Node'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Layer, Line, Rect, Stage, Transformer } from 'react-konva'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Layer, Line, Rect, Stage, Text, Transformer } from 'react-konva'
 import {
   criarCaminho,
   criarForma,
@@ -23,12 +23,22 @@ import { mimeDoFormato, registrarExportador } from '../../nucleo/exportacao'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 import { useColabStore } from '../../estado/useColabStore'
+import { useUiStore } from '../../estado/useUiStore'
 import { Elemento, Ferramenta } from '../../tipos/projeto'
 import { ElementoKonva } from './ElementoKonva'
 import { OverlayTextoEdicao } from './OverlayTextoEdicao'
 import { CamadaColab } from './CamadaColab'
 
 const LIMIAR_SNAP = 6 // px de canvas para "grudar" nas guias
+const COR_GUIA = '#ff3d71' // magenta das guias de alinhamento (docs/PROMPT-UI.md §6.4)
+
+/** Guia de alinhamento: orientação, posição no eixo e âncora do rótulo numérico */
+interface Guia {
+  tipo: 'v' | 'h'
+  pos: number
+  ancora: number
+  rotulo: string
+}
 
 /** Dimensões aproximadas (sem rotação) para snap e marquee */
 function dimensoes(elemento: Elemento): { largura: number; altura: number } {
@@ -62,6 +72,8 @@ export function CanvasEditor() {
   const adicionarElemento = useEditorStore((s) => s.adicionarElemento)
   const atualizarElementos = useEditorStore((s) => s.atualizarElementos)
 
+  const definirArrastando = useUiStore((s) => s.definirArrastando)
+
   const moverCursorColab = useColabStore((s) => s.moverCursor)
   const modoComentario = useColabStore((s) => s.modoComentario)
   const definirComentarioPendente = useColabStore((s) => s.definirComentarioPendente)
@@ -77,7 +89,7 @@ export function CanvasEditor() {
   const [tamanho, setTamanho] = useState({ largura: 0, altura: 0 })
   const [espacoPressionado, setEspacoPressionado] = useState(false)
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
-  const [guias, setGuias] = useState<number[][]>([])
+  const [guias, setGuias] = useState<Guia[]>([])
   const [caneta, setCaneta] = useState<{ x: number; y: number }[]>([])
   const [canetaMouse, setCanetaMouse] = useState<{ x: number; y: number } | null>(null)
   const idAjustado = useRef<string | null>(null)
@@ -370,6 +382,12 @@ export function CanvasEditor() {
     })
   }
 
+  // Sinaliza início do arraste (esconde flutuantes); pan do Stage é ignorado
+  const aoIniciarArrasteStage = (e: KonvaEventObject<DragEvent>) => {
+    const stage = stageRef.current
+    if (stage && e.target !== stage) definirArrastando(true)
+  }
+
   // Snap às guias (centro/bordas do canvas) durante o arraste de elementos
   const aoArrastarNoStage = (e: KonvaEventObject<DragEvent>) => {
     const stage = stageRef.current
@@ -379,7 +397,7 @@ export function CanvasEditor() {
     if (!el) return
     const { largura, altura } = dimensoes(el)
     const limiar = LIMIAR_SNAP / zoom
-    const novasGuias: number[][] = []
+    const novasGuias: Guia[] = []
 
     // Alvos verticais: borda esq, centro, borda dir do canvas
     const alvosX = [0, projeto.larguraCanvas / 2, projeto.larguraCanvas]
@@ -388,7 +406,7 @@ export function CanvasEditor() {
       for (let i = 0; i < bordasX.length; i++) {
         if (Math.abs(bordasX[i] - alvo) < limiar) {
           no.x(alvo - (i === 0 ? 0 : i === 1 ? largura / 2 : largura))
-          novasGuias.push([alvo, 0, alvo, projeto.alturaCanvas])
+          novasGuias.push({ tipo: 'v', pos: alvo, ancora: no.y(), rotulo: String(Math.round(alvo)) })
         }
       }
     }
@@ -398,7 +416,7 @@ export function CanvasEditor() {
       for (let i = 0; i < bordasY.length; i++) {
         if (Math.abs(bordasY[i] - alvo) < limiar) {
           no.y(alvo - (i === 0 ? 0 : i === 1 ? altura / 2 : altura))
-          novasGuias.push([0, alvo, projeto.larguraCanvas, alvo])
+          novasGuias.push({ tipo: 'h', pos: alvo, ancora: no.x(), rotulo: String(Math.round(alvo)) })
         }
       }
     }
@@ -407,6 +425,7 @@ export function CanvasEditor() {
 
   const aoTerminarArrasteStage = (e: KonvaEventObject<DragEvent>) => {
     setGuias([])
+    definirArrastando(false)
     const stage = stageRef.current
     if (stage && e.target === stage) {
       definirDeslocamento({ x: stage.x(), y: stage.y() })
@@ -441,6 +460,7 @@ export function CanvasEditor() {
         onMouseMove={aoMoverNoStage}
         onMouseUp={aoSoltarNoStage}
         onDblClick={() => modoCaneta && finalizarCaneta(false)}
+        onDragStart={aoIniciarArrasteStage}
         onDragMove={aoArrastarNoStage}
         onDragEnd={aoTerminarArrasteStage}
       >
@@ -474,14 +494,28 @@ export function CanvasEditor() {
 
         {/* Camada de UI: guias, marquee e transformer (oculta na exportação) */}
         <Layer ref={camadaUiRef}>
-          {guias.map((pontos, i) => (
-            <Line
-              key={i}
-              points={pontos}
-              stroke="#e879f9"
-              strokeWidth={1 / zoom}
-              dash={[4 / zoom, 4 / zoom]}
-            />
+          {guias.map((guia, i) => (
+            <Fragment key={i}>
+              <Line
+                points={
+                  guia.tipo === 'v'
+                    ? [guia.pos, 0, guia.pos, projeto.alturaCanvas]
+                    : [0, guia.pos, projeto.larguraCanvas, guia.pos]
+                }
+                stroke={COR_GUIA}
+                strokeWidth={1 / zoom}
+                dash={[4 / zoom, 4 / zoom]}
+              />
+              <Text
+                text={guia.rotulo}
+                x={guia.tipo === 'v' ? guia.pos + 6 / zoom : guia.ancora + 6 / zoom}
+                y={guia.tipo === 'v' ? guia.ancora + 6 / zoom : guia.pos + 6 / zoom}
+                fontSize={12 / zoom}
+                fontStyle="bold"
+                fill={COR_GUIA}
+                listening={false}
+              />
+            </Fragment>
           ))}
           {marquee && (
             <Rect
