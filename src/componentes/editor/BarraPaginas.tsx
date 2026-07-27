@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
+import { IconeDuplicar, IconeLixeira, IconeMais } from '../icones/Icones'
 
 export function BarraPaginas() {
   const projeto = useEditorStore((s) => s.projeto)
@@ -83,7 +84,7 @@ export function BarraPaginas() {
                   title="Duplicar página"
                   aria-label="Duplicar página"
                 >
-                  ⧉
+                  <IconeDuplicar tamanho={13} />
                 </button>
                 <button
                   type="button"
@@ -95,7 +96,7 @@ export function BarraPaginas() {
                   title={podeRemover ? 'Remover página' : 'O projeto precisa de ao menos uma página'}
                   aria-label="Remover página"
                 >
-                  🗑
+                  <IconeLixeira tamanho={13} />
                 </button>
               </>
             )}
@@ -106,10 +107,10 @@ export function BarraPaginas() {
       <button
         type="button"
         onClick={adicionarPagina}
-        className="flex shrink-0 items-center gap-1 rounded-lg bg-superficie-100 px-3 py-1.5 text-xs font-semibold text-superficie-700 transition hover:bg-superficie-200 dark:bg-superficie-800 dark:text-superficie-200 dark:hover:bg-superficie-700"
+        className="flex shrink-0 items-center gap-1.5 rounded-lg bg-superficie-100 px-3 py-1.5 text-xs font-semibold text-superficie-700 transition hover:bg-superficie-200 dark:bg-superficie-800 dark:text-superficie-200 dark:hover:bg-superficie-700"
         title="Adicionar página"
       >
-        ✚ Página
+        <IconeMais tamanho={13} /> Página
       </button>
     </div>
   )

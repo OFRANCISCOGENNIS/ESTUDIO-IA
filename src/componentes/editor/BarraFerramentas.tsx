@@ -21,25 +21,38 @@ import { PainelMarca } from './PainelMarca'
 import { PainelColab } from './PainelColab'
 import { PainelTime } from './PainelTime'
 import { listarPlugins } from '../../nucleo/plugins/registro'
+import {
+  IconeAlvo,
+  IconeBlocos,
+  IconeFaisca,
+  IconeFormas,
+  IconeFoto,
+  IconePaleta,
+  IconePasta,
+  IconePessoas,
+  IconePredio,
+  IconeTipoTexto,
+  IconeUpload,
+} from '../icones/Icones'
 
 /** Identificadores das abas da trilha lateral */
 type Aba =
   | 'Templates' | 'Elementos' | 'Texto' | 'Uploads' | 'Fotos'
   | 'IA' | 'Marca' | 'Colaborar' | 'Time' | 'Projetos' | 'Apps'
 
-/** Abas exibidas na trilha, em ordem */
-const ABAS: { id: Aba; icone: string }[] = [
-  { id: 'Templates', icone: '🎨' },
-  { id: 'Elementos', icone: '⬡' },
-  { id: 'Texto', icone: 'T' },
-  { id: 'Uploads', icone: '⬆️' },
-  { id: 'Fotos', icone: '🖼️' },
-  { id: 'IA', icone: '✨' },
-  { id: 'Marca', icone: '🎯' },
-  { id: 'Colaborar', icone: '👥' },
-  { id: 'Time', icone: '🏢' },
-  { id: 'Projetos', icone: '📁' },
-  { id: 'Apps', icone: '🧩' },
+/** Abas exibidas na trilha, em ordem (ícones SVG stroke profissionais) */
+const ABAS: { id: Aba; Icone: (p: { tamanho?: number }) => JSX.Element }[] = [
+  { id: 'Templates', Icone: IconePaleta },
+  { id: 'Elementos', Icone: IconeFormas },
+  { id: 'Texto', Icone: IconeTipoTexto },
+  { id: 'Uploads', Icone: IconeUpload },
+  { id: 'Fotos', Icone: IconeFoto },
+  { id: 'IA', Icone: IconeFaisca },
+  { id: 'Marca', Icone: IconeAlvo },
+  { id: 'Colaborar', Icone: IconePessoas },
+  { id: 'Time', Icone: IconePredio },
+  { id: 'Projetos', Icone: IconePasta },
+  { id: 'Apps', Icone: IconeBlocos },
 ]
 
 /** Formas básicas oferecidas na aba Elementos */
@@ -612,7 +625,7 @@ export function BarraFerramentas() {
   return (
     <div className="flex h-full">
       {/* Trilha vertical de abas */}
-      <div className="flex w-16 shrink-0 flex-col items-center gap-1 border-r border-superficie-200 bg-white py-3 dark:border-superficie-800 dark:bg-superficie-900">
+      <div className="rolagem-fina flex w-16 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-superficie-200 bg-white py-2 dark:border-superficie-800 dark:bg-superficie-900">
         {ABAS.map((item) => {
           const ativa = item.id === aba && !recolhido
           return (
@@ -621,13 +634,19 @@ export function BarraFerramentas() {
               onClick={() => selecionarAba(item.id)}
               title={item.id}
               aria-pressed={ativa}
-              className={`flex w-14 flex-col items-center gap-0.5 rounded-xl2 py-2 text-[10px] font-medium transition ${
+              className={`group relative flex w-14 flex-col items-center gap-1 rounded-xl2 py-2 text-[10px] font-medium transition-[background-color,color] duration-micro ease-facil-padrao ${
                 ativa
-                  ? 'bg-primaria-500 text-white shadow-suave'
-                  : 'text-superficie-700 hover:bg-superficie-100 dark:text-superficie-200 dark:hover:bg-superficie-800'
+                  ? 'bg-primaria-500/10 text-primaria-600 dark:bg-primaria-500/20 dark:text-primaria-300'
+                  : 'text-superficie-600 hover:bg-superficie-100 hover:text-superficie-900 dark:text-superficie-300 dark:hover:bg-superficie-800 dark:hover:text-superficie-100'
               }`}
             >
-              <span className="text-lg leading-none">{item.icone}</span>
+              {/* Barra indicadora da aba ativa */}
+              <span
+                className={`absolute -left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-primaria-500 transition-opacity duration-micro ${
+                  ativa ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+              <item.Icone tamanho={20} />
               <span>{item.id}</span>
             </button>
           )

@@ -9,7 +9,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { usePlanoStore } from '../../estado/usePlanoStore'
+import { useUiStore } from '../../estado/useUiStore'
 import { recursoLiberado } from '../../dados/planos'
+import {
+  IconeCompartilhar,
+  IconeDesfazer,
+  IconeDownload,
+  IconeEncaixar,
+  IconeLua,
+  IconeMais,
+  IconeMenos,
+  IconePlay,
+  IconeRefazer,
+  IconeSetaEsquerda,
+  IconeSol,
+} from '../icones/Icones'
 import {
   baixarDataUrl,
   exportarDataUrl,
@@ -39,6 +53,8 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
   const definirZoom = useEditorStore((s) => s.definirZoom)
   const iniciarApresentacao = useEditorStore((s) => s.iniciarApresentacao)
   const plano = usePlanoStore((s) => s.plano)
+  const solicitarEncaixe = useUiStore((s) => s.solicitarEncaixe)
+  const definirAba = useUiStore((s) => s.definirAba)
 
   // Nome em edição inline (espelha o nome do projeto)
   const [nomeLocal, setNomeLocal] = useState(projeto?.nome ?? '')
@@ -120,7 +136,7 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
         title="Voltar aos projetos"
         aria-label="Voltar aos projetos"
       >
-        ←
+        <IconeSetaEsquerda tamanho={18} />
       </button>
 
       {/* Logo */}
@@ -164,7 +180,7 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
           title="Desfazer (Ctrl+Z)"
           aria-label="Desfazer"
         >
-          ↶
+          <IconeDesfazer tamanho={18} />
         </button>
         <button
           onClick={refazer}
@@ -173,7 +189,7 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
           title="Refazer (Ctrl+Y)"
           aria-label="Refazer"
         >
-          ↷
+          <IconeRefazer tamanho={18} />
         </button>
       </div>
 
@@ -196,7 +212,7 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
           title="Diminuir zoom"
           aria-label="Diminuir zoom"
         >
-          −
+          <IconeMenos tamanho={16} />
         </button>
         <button
           onClick={() => definirZoom(1)}
@@ -212,7 +228,15 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
           title="Aumentar zoom"
           aria-label="Aumentar zoom"
         >
-          +
+          <IconeMais tamanho={16} />
+        </button>
+        <button
+          onClick={solicitarEncaixe}
+          className="flex h-8 w-8 items-center justify-center rounded-md text-superficie-700 transition hover:bg-white dark:text-superficie-200 dark:hover:bg-superficie-700"
+          title="Encaixar na tela"
+          aria-label="Encaixar na tela"
+        >
+          <IconeEncaixar tamanho={16} />
         </button>
       </div>
 
@@ -223,34 +247,34 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
         title={temaEscuro ? 'Tema claro' : 'Tema escuro'}
         aria-label="Alternar tema"
       >
-        {temaEscuro ? '☀️' : '🌙'}
+        {temaEscuro ? <IconeSol tamanho={18} /> : <IconeLua tamanho={18} />}
       </button>
 
       {/* Apresentar (modo apresentação) */}
       <button
         onClick={iniciarApresentacao}
-        className="botao-secundario hidden lg:inline-flex"
+        className="botao-secundario hidden items-center gap-1.5 lg:inline-flex"
         title="Iniciar apresentação"
       >
-        ▶ Apresentar
+        <IconePlay tamanho={15} /> Apresentar
       </button>
       <button
-        className="botao-secundario hidden lg:inline-flex"
-        disabled
-        title="Colaboração — em breve (Fase 5)"
+        onClick={() => definirAba('Colaborar')}
+        className="botao-secundario hidden items-center gap-1.5 lg:inline-flex"
+        title="Abrir colaboração e compartilhamento"
       >
-        Compartilhar
+        <IconeCompartilhar tamanho={15} /> Compartilhar
       </button>
 
       {/* Baixar (menu de exportação) */}
       <div className="relative" ref={refMenu}>
         <button
           onClick={() => setMenuAberto((aberto) => !aberto)}
-          className="botao-primario"
+          className="botao-primario inline-flex items-center gap-1.5"
           aria-haspopup="menu"
           aria-expanded={menuAberto}
         >
-          ⬇ Baixar
+          <IconeDownload tamanho={15} /> Baixar
         </button>
 
         {menuAberto && (

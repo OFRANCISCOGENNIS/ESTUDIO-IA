@@ -28,6 +28,16 @@ import { Elemento, Ferramenta } from '../../tipos/projeto'
 import { ElementoKonva } from './ElementoKonva'
 import { OverlayTextoEdicao } from './OverlayTextoEdicao'
 import { CamadaColab } from './CamadaColab'
+import {
+  IconeCadeado,
+  IconeColar,
+  IconeCopiar,
+  IconeDuplicar,
+  IconeEncaixar,
+  IconeFrente,
+  IconeLixeira,
+  IconeTras,
+} from '../icones/Icones'
 
 const LIMIAR_SNAP = 6 // px de canvas para "grudar" nas guias
 const COR_GUIA = '#ff3d71' // magenta das guias de alinhamento (docs/PROMPT-UI.md §6.4)
@@ -71,8 +81,14 @@ export function CanvasEditor() {
   const definirTextoEmEdicao = useEditorStore((s) => s.definirTextoEmEdicao)
   const adicionarElemento = useEditorStore((s) => s.adicionarElemento)
   const atualizarElementos = useEditorStore((s) => s.atualizarElementos)
+  const duplicarSelecionados = useEditorStore((s) => s.duplicarSelecionados)
+  const removerSelecionados = useEditorStore((s) => s.removerSelecionados)
+  const copiarSelecionados = useEditorStore((s) => s.copiarSelecionados)
+  const colar = useEditorStore((s) => s.colar)
+  const moverCamada = useEditorStore((s) => s.moverCamada)
 
   const definirArrastando = useUiStore((s) => s.definirArrastando)
+  const pedidoEncaixe = useUiStore((s) => s.pedidoEncaixe)
 
   const moverCursorColab = useColabStore((s) => s.moverCursor)
   const modoComentario = useColabStore((s) => s.modoComentario)
@@ -92,7 +108,9 @@ export function CanvasEditor() {
   const [guias, setGuias] = useState<Guia[]>([])
   const [caneta, setCaneta] = useState<{ x: number; y: number }[]>([])
   const [canetaMouse, setCanetaMouse] = useState<{ x: number; y: number } | null>(null)
+  const [menuCtx, setMenuCtx] = useState<{ x: number; y: number } | null>(null)
   const idAjustado = useRef<string | null>(null)
+  const encaixeTratado = useRef(0)
 
   const modoPan = ferramenta === 'mao' || espacoPressionado
   const modoCaneta = ferramenta === 'caneta' && podeEditar
@@ -111,11 +129,9 @@ export function CanvasEditor() {
     return () => observador.disconnect()
   }, [])
 
-  // ---- Ajuste inicial: centraliza e encaixa o artboard ao abrir ----
-  // Encaixa uma única vez por projeto, só depois de o contêiner ser medido.
-  useEffect(() => {
+  // ---- Encaixe: centraliza e ajusta o artboard ao espaço disponível ----
+  const encaixar = useCallback(() => {
     if (!projeto || tamanho.largura < 40 || tamanho.altura < 40) return
-    if (idAjustado.current === projeto.id) return
     const margem = 80
     const escala = Math.min(
       (tamanho.largura - margem) / projeto.larguraCanvas,
@@ -126,8 +142,22 @@ export function CanvasEditor() {
       x: (tamanho.largura - projeto.larguraCanvas * escala) / 2,
       y: (tamanho.altura - projeto.alturaCanvas * escala) / 2,
     })
-    idAjustado.current = projeto.id
   }, [projeto, tamanho, definirZoom])
+
+  // Encaixe inicial: uma única vez por projeto, após medir o contêiner
+  useEffect(() => {
+    if (!projeto || tamanho.largura < 40) return
+    if (idAjustado.current === projeto.id) return
+    encaixar()
+    idAjustado.current = projeto.id
+  }, [projeto, tamanho, encaixar])
+
+  // Encaixe sob demanda (botão "Encaixar" da barra superior / menu)
+  useEffect(() => {
+    if (pedidoEncaixe === encaixeTratado.current) return
+    encaixeTratado.current = pedidoEncaixe
+    encaixar()
+  }, [pedidoEncaixe, encaixar])
 
   // ---- Espaço pressionado ativa o pan temporário ----
   useEffect(() => {
@@ -440,11 +470,28 @@ export function CanvasEditor() {
         ? 'crosshair'
         : 'default'
 
+  // ---- Menu de contexto (clique direito) ----
+  const aoAbrirMenuContexto = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const caixa = containerRef.current?.getBoundingClientRect()
+    if (!caixa) return
+    // Limita a posição para o menu não vazar do contêiner
+    const x = Math.min(e.clientX - caixa.left, caixa.width - 224)
+    const y = Math.min(e.clientY - caixa.top, caixa.height - 260)
+    setMenuCtx({ x: Math.max(4, x), y: Math.max(4, y) })
+  }
+
+  const acaoMenu = (fn: () => void) => () => {
+    fn()
+    setMenuCtx(null)
+  }
+
   return (
     <div
       ref={containerRef}
       className="relative h-full w-full overflow-hidden bg-superficie-100 dark:bg-superficie-950"
       style={{ cursor }}
+      onContextMenu={aoAbrirMenuContexto}
     >
       <Stage
         ref={stageRef}
@@ -582,6 +629,116 @@ export function CanvasEditor() {
 
       {/* Sobreposição de colaboração: cursores e comentários */}
       <CamadaColab />
+
+      {/* Menu de contexto (clique direito) */}
+      {menuCtx && (
+        <>
+          {/* Camada invisível que fecha o menu ao clicar fora */}
+          <div
+            className="fixed inset-0 z-40"
+            onMouseDown={() => setMenuCtx(null)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              setMenuCtx(null)
+            }}
+          />
+          <div
+            role="menu"
+            aria-label="Ações do canvas"
+            className="absolute z-50 w-52 rounded-xl2 border border-superficie-200 bg-[--sup-flutuante] p-1.5 shadow-flutuante dark:border-superficie-700"
+            style={{ left: menuCtx.x, top: menuCtx.y }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {podeEditar && selecionados.length > 0 ? (
+              <>
+                <ItemMenu rotulo="Duplicar" atalho="Ctrl+D" onClick={acaoMenu(duplicarSelecionados)}>
+                  <IconeDuplicar tamanho={16} />
+                </ItemMenu>
+                <ItemMenu rotulo="Copiar" atalho="Ctrl+C" onClick={acaoMenu(copiarSelecionados)}>
+                  <IconeCopiar tamanho={16} />
+                </ItemMenu>
+                <ItemMenu rotulo="Colar" atalho="Ctrl+V" onClick={acaoMenu(colar)}>
+                  <IconeColar tamanho={16} />
+                </ItemMenu>
+                <SeparadorMenu />
+                <ItemMenu
+                  rotulo="Trazer para frente"
+                  onClick={acaoMenu(() => selecionados.forEach((id) => moverCamada(id, 'frente')))}
+                >
+                  <IconeFrente tamanho={16} />
+                </ItemMenu>
+                <ItemMenu
+                  rotulo="Enviar para trás"
+                  onClick={acaoMenu(() => selecionados.forEach((id) => moverCamada(id, 'tras')))}
+                >
+                  <IconeTras tamanho={16} />
+                </ItemMenu>
+                <SeparadorMenu />
+                <ItemMenu
+                  rotulo="Bloquear"
+                  onClick={acaoMenu(() => atualizarElementos(selecionados, { bloqueado: true }))}
+                >
+                  <IconeCadeado tamanho={16} />
+                </ItemMenu>
+                <ItemMenu rotulo="Excluir" atalho="Del" perigo onClick={acaoMenu(removerSelecionados)}>
+                  <IconeLixeira tamanho={16} />
+                </ItemMenu>
+              </>
+            ) : (
+              <>
+                {podeEditar && (
+                  <ItemMenu rotulo="Colar" atalho="Ctrl+V" onClick={acaoMenu(colar)}>
+                    <IconeColar tamanho={16} />
+                  </ItemMenu>
+                )}
+                <ItemMenu rotulo="Encaixar na tela" onClick={acaoMenu(encaixar)}>
+                  <IconeEncaixar tamanho={16} />
+                </ItemMenu>
+                <ItemMenu rotulo="Zoom 100%" onClick={acaoMenu(() => definirZoom(1))}>
+                  <span className="w-4 text-center text-[10px] font-bold">1:1</span>
+                </ItemMenu>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
+
+// ---- Itens do menu de contexto ----
+
+function ItemMenu({
+  rotulo,
+  atalho,
+  perigo = false,
+  onClick,
+  children,
+}: {
+  rotulo: string
+  atalho?: string
+  perigo?: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] font-medium transition-colors duration-micro ${
+        perigo
+          ? 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40'
+          : 'text-superficie-800 hover:bg-primaria-500/10 dark:text-superficie-100 dark:hover:bg-primaria-500/20'
+      }`}
+    >
+      {children}
+      <span className="flex-1">{rotulo}</span>
+      {atalho && <span className="text-[10px] text-superficie-500">{atalho}</span>}
+    </button>
+  )
+}
+
+const SeparadorMenu = () => (
+  <div className="mx-2 my-1 h-px bg-superficie-200 dark:bg-superficie-700" />
+)

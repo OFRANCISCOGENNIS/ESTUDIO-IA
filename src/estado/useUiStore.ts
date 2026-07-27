@@ -21,12 +21,15 @@ interface EstadoUi {
   paletaAberta: boolean
   /** Verdadeiro enquanto um elemento é arrastado no canvas (esconde flutuantes) */
   arrastando: boolean
+  /** Contador de pedidos de "encaixar na tela" (CanvasEditor observa) */
+  pedidoEncaixe: number
   definirAba: (aba: string) => void
   definirLarguraPainel: (px: number) => void
   abrirPaleta: () => void
   fecharPaleta: () => void
   alternarPaleta: () => void
   definirArrastando: (v: boolean) => void
+  solicitarEncaixe: () => void
 }
 
 export const useUiStore = create<EstadoUi>((set) => ({
@@ -34,6 +37,7 @@ export const useUiStore = create<EstadoUi>((set) => ({
   larguraPainel: lerLargura(),
   paletaAberta: false,
   arrastando: false,
+  pedidoEncaixe: 0,
 
   definirAba: (aba) => set({ abaFerramentas: aba }),
 
@@ -47,6 +51,7 @@ export const useUiStore = create<EstadoUi>((set) => ({
   fecharPaleta: () => set({ paletaAberta: false }),
   alternarPaleta: () => set((e) => ({ paletaAberta: !e.paletaAberta })),
   definirArrastando: (v) => set({ arrastando: v }),
+  solicitarEncaixe: () => set((e) => ({ pedidoEncaixe: e.pedidoEncaixe + 1 })),
 }))
 
 export const LIMITES_PAINEL = { min: MIN_PAINEL, max: MAX_PAINEL }
