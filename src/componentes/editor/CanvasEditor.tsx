@@ -29,18 +29,23 @@ import { ElementoKonva } from './ElementoKonva'
 import { OverlayTextoEdicao } from './OverlayTextoEdicao'
 import { CamadaColab } from './CamadaColab'
 import {
+  IconeAgrupar,
   IconeCadeado,
   IconeColar,
   IconeCopiar,
+  IconeDesagrupar,
   IconeDuplicar,
   IconeEncaixar,
   IconeFrente,
+  IconeGrade,
   IconeLixeira,
   IconeTras,
 } from '../icones/Icones'
 
 const LIMIAR_SNAP = 6 // px de canvas para "grudar" nas guias
 const COR_GUIA = '#ff3d71' // magenta das guias de alinhamento (docs/PROMPT-UI.md §6.4)
+const TAM_GRADE = 50 // espaçamento da grade (px de canvas)
+const SNAP_GRADE = 25 // passo do snap quando a grade está ativa
 
 /** Guia de alinhamento: orientação, posição no eixo e âncora do rótulo numérico */
 interface Guia {
@@ -86,9 +91,14 @@ export function CanvasEditor() {
   const copiarSelecionados = useEditorStore((s) => s.copiarSelecionados)
   const colar = useEditorStore((s) => s.colar)
   const moverCamada = useEditorStore((s) => s.moverCamada)
+  const agruparSelecionados = useEditorStore((s) => s.agruparSelecionados)
+  const desagruparSelecionados = useEditorStore((s) => s.desagruparSelecionados)
+  const aplicarAlteracao = useEditorStore((s) => s.aplicarAlteracao)
 
   const definirArrastando = useUiStore((s) => s.definirArrastando)
   const pedidoEncaixe = useUiStore((s) => s.pedidoEncaixe)
+  const mostrarGrade = useUiStore((s) => s.mostrarGrade)
+  const alternarGrade = useUiStore((s) => s.alternarGrade)
 
   const moverCursorColab = useColabStore((s) => s.moverCursor)
   const modoComentario = useColabStore((s) => s.modoComentario)
@@ -108,14 +118,22 @@ export function CanvasEditor() {
   const [guias, setGuias] = useState<Guia[]>([])
   const [caneta, setCaneta] = useState<{ x: number; y: number }[]>([])
   const [canetaMouse, setCanetaMouse] = useState<{ x: number; y: number } | null>(null)
+  const [lapis, setLapis] = useState<{ x: number; y: number }[] | null>(null)
   const [menuCtx, setMenuCtx] = useState<{ x: number; y: number } | null>(null)
   const idAjustado = useRef<string | null>(null)
   const encaixeTratado = useRef(0)
+  // Posições iniciais da seleção no início de um arraste (grupo/multi-drag)
+  const arrasteGrupo = useRef<{ idArrastado: string; posicoes: Map<string, { x: number; y: number }> } | null>(null)
 
   const modoPan = ferramenta === 'mao' || espacoPressionado
   const modoCaneta = ferramenta === 'caneta' && podeEditar
+  const modoLapis = ferramenta === 'lapis' && podeEditar
   const ferramentaCriacao =
-    podeEditar && ferramenta !== 'selecao' && ferramenta !== 'mao' && ferramenta !== 'caneta'
+    podeEditar &&
+    ferramenta !== 'selecao' &&
+    ferramenta !== 'mao' &&
+    ferramenta !== 'caneta' &&
+    ferramenta !== 'lapis'
 
   // ---- Medição do contêiner (canvas ocupa todo o espaço disponível) ----
   useLayoutEffect(() => {
@@ -273,16 +291,34 @@ export function CanvasEditor() {
 
   if (!projeto || !pagina) return null
 
+  /** Ids do grupo do elemento (ou só o próprio id, se não agrupado) */
+  const idsDoGrupo = (id: string): string[] => {
+    const el = pagina.elementos.find((it) => it.id === id)
+    if (!el?.grupoId) return [id]
+    return pagina.elementos.filter((it) => it.grupoId === el.grupoId).map((it) => it.id)
+  }
+
   const aoSelecionarElemento = (
     id: string,
     e: KonvaEventObject<MouseEvent | TouchEvent>,
   ) => {
-    if (modoPan) return
+    // Ferramentas de desenho passam por cima dos elementos
+    if (modoPan || modoCaneta || modoLapis) return
     const evento = e.evt as MouseEvent
+    const grupo = idsDoGrupo(id)
     if (evento.shiftKey || evento.ctrlKey || evento.metaKey) {
-      alternarSelecao(id)
+      if (grupo.length === 1) alternarSelecao(id)
+      else {
+        // Alterna o grupo inteiro de uma vez
+        const todosSelecionados = grupo.every((g) => selecionados.includes(g))
+        selecionar(
+          todosSelecionados
+            ? selecionados.filter((s) => !grupo.includes(s))
+            : [...new Set([...selecionados, ...grupo])],
+        )
+      }
     } else if (!selecionados.includes(id)) {
-      selecionar([id])
+      selecionar(grupo)
     }
   }
 
@@ -318,6 +354,15 @@ export function CanvasEditor() {
   const aoApertarNoStage = (e: KonvaEventObject<MouseEvent>) => {
     const stage = stageRef.current
     if (!stage) return
+
+    // Clique direito é do menu de contexto — não inicia marquee/criação
+    if (e.evt.button === 2) return
+
+    // Ferramenta lápis: começa um traço à mão livre
+    if (modoLapis) {
+      setLapis([pontoNoCanvas()])
+      return
+    }
 
     // Ferramenta caneta: cada clique adiciona um ponto ao caminho
     if (modoCaneta) {
@@ -363,6 +408,14 @@ export function CanvasEditor() {
     const ponteiro = pontoNoCanvas()
     moverCursorColab(ponteiro.x, ponteiro.y)
     if (modoCaneta && caneta.length > 0) setCanetaMouse(ponteiro)
+    // Lápis: acumula pontos enquanto o botão está pressionado
+    if (lapis) {
+      const ultimo = lapis[lapis.length - 1]
+      if (Math.hypot(ponteiro.x - ultimo.x, ponteiro.y - ultimo.y) > 2 / zoom) {
+        setLapis([...lapis, ponteiro])
+      }
+      return
+    }
     if (!marqueeInicio.current) return
     const p = ponteiro
     const inicio = marqueeInicio.current
@@ -375,6 +428,17 @@ export function CanvasEditor() {
   }
 
   const aoSoltarNoStage = () => {
+    // Lápis: finaliza o traço como um caminho suave
+    if (lapis) {
+      if (lapis.length >= 3) {
+        const inicio = lapis[0]
+        const pontos = lapis.flatMap((p) => [p.x - inicio.x, p.y - inicio.y])
+        adicionarElemento(criarCaminho(inicio.x, inicio.y, pontos, { tensao: 0.4 }))
+        definirFerramenta('selecao')
+      }
+      setLapis(null)
+      return
+    }
     if (marquee && marqueeInicio.current) {
       const dentro = pagina.elementos.filter((el) => {
         if (!el.visivel || el.bloqueado) return false
@@ -386,7 +450,12 @@ export function CanvasEditor() {
           el.y + altura > marquee.y
         )
       })
-      if (dentro.length > 0) selecionar(dentro.map((el) => el.id))
+      if (dentro.length > 0) {
+        // Expande a seleção para incluir grupos inteiros
+        const ids = new Set<string>()
+        for (const el of dentro) idsDoGrupo(el.id).forEach((id) => ids.add(id))
+        selecionar([...ids])
+      }
     }
     marqueeInicio.current = null
     setMarquee(null)
@@ -415,7 +484,22 @@ export function CanvasEditor() {
   // Sinaliza início do arraste (esconde flutuantes); pan do Stage é ignorado
   const aoIniciarArrasteStage = (e: KonvaEventObject<DragEvent>) => {
     const stage = stageRef.current
-    if (stage && e.target !== stage) definirArrastando(true)
+    if (!stage || e.target === stage) return
+    definirArrastando(true)
+    // Multi-drag: se o nó arrastado faz parte de uma seleção múltipla,
+    // grava as posições iniciais para mover o conjunto junto.
+    const no = e.target as Konva.Node
+    const el = pagina.elementos.find(
+      (it) => it.id === no.id() || nosRef.current.get(it.id) === no,
+    )
+    if (el && selecionados.includes(el.id) && selecionados.length > 1) {
+      const posicoes = new Map<string, { x: number; y: number }>()
+      for (const id of selecionados) {
+        const alvo = pagina.elementos.find((it) => it.id === id)
+        if (alvo && !alvo.bloqueado) posicoes.set(id, { x: alvo.x, y: alvo.y })
+      }
+      arrasteGrupo.current = { idArrastado: el.id, posicoes }
+    }
   }
 
   // Snap às guias (centro/bordas do canvas) durante o arraste de elementos
@@ -428,6 +512,12 @@ export function CanvasEditor() {
     const { largura, altura } = dimensoes(el)
     const limiar = LIMIAR_SNAP / zoom
     const novasGuias: Guia[] = []
+
+    // Grade ativa: encaixa a posição no passo da grade antes das guias
+    if (mostrarGrade) {
+      no.x(Math.round(no.x() / SNAP_GRADE) * SNAP_GRADE)
+      no.y(Math.round(no.y() / SNAP_GRADE) * SNAP_GRADE)
+    }
 
     // Alvos verticais: borda esq, centro, borda dir do canvas
     const alvosX = [0, projeto.larguraCanvas / 2, projeto.larguraCanvas]
@@ -451,6 +541,20 @@ export function CanvasEditor() {
       }
     }
     setGuias(novasGuias)
+
+    // Multi-drag: os demais selecionados seguem o nó arrastado ao vivo
+    const grupo = arrasteGrupo.current
+    if (grupo && grupo.idArrastado === el.id) {
+      const inicial = grupo.posicoes.get(el.id)
+      if (inicial) {
+        const dx = no.x() - inicial.x
+        const dy = no.y() - inicial.y
+        for (const [id, pos] of grupo.posicoes) {
+          if (id === el.id) continue
+          nosRef.current.get(id)?.position({ x: pos.x + dx, y: pos.y + dy })
+        }
+      }
+    }
   }
 
   const aoTerminarArrasteStage = (e: KonvaEventObject<DragEvent>) => {
@@ -459,10 +563,37 @@ export function CanvasEditor() {
     const stage = stageRef.current
     if (stage && e.target === stage) {
       definirDeslocamento({ x: stage.x(), y: stage.y() })
+      return
+    }
+    // Consolida o multi-drag no modelo (o nó arrastado já persistiu o
+    // próprio dragend; o histórico registrado lá cobre o estado pré-arraste,
+    // então os demais movem sem registrar um segundo passo de undo).
+    const grupo = arrasteGrupo.current
+    if (grupo) {
+      arrasteGrupo.current = null
+      const no = e.target as Konva.Node
+      const inicial = grupo.posicoes.get(grupo.idArrastado)
+      if (inicial) {
+        const dx = no.x() - inicial.x
+        const dy = no.y() - inicial.y
+        if (dx !== 0 || dy !== 0) {
+          aplicarAlteracao(
+            (atual) => ({
+              ...atual,
+              elementos: atual.elementos.map((it) => {
+                if (it.id === grupo.idArrastado || !grupo.posicoes.has(it.id)) return it
+                const pos = grupo.posicoes.get(it.id)!
+                return { ...it, x: pos.x + dx, y: pos.y + dy }
+              }),
+            }),
+            false,
+          )
+        }
+      }
     }
   }
 
-  const cursor = modoComentario || modoCaneta
+  const cursor = modoComentario || modoCaneta || modoLapis
     ? 'crosshair'
     : modoPan
       ? 'grab'
@@ -475,6 +606,11 @@ export function CanvasEditor() {
     e.preventDefault()
     const caixa = containerRef.current?.getBoundingClientRect()
     if (!caixa) return
+    // Clique direito em área vazia limpa a seleção (menu do canvas)
+    const stage = stageRef.current
+    const ponteiro = stage?.getPointerPosition()
+    const alvo = ponteiro ? stage?.getIntersection(ponteiro) : null
+    if (!alvo || alvo.name() === 'fundo-artboard') limparSelecao()
     // Limita a posição para o menu não vazar do contêiner
     const x = Math.min(e.clientX - caixa.left, caixa.width - 224)
     const y = Math.min(e.clientY - caixa.top, caixa.height - 260)
@@ -530,7 +666,7 @@ export function CanvasEditor() {
               key={elemento.id}
               elemento={elemento}
               emEdicao={textoEmEdicao === elemento.id}
-              permitirArraste={podeEditar}
+              permitirArraste={podeEditar && !modoCaneta && !modoLapis}
               registrarNo={registrarNo}
               aoSelecionar={aoSelecionarElemento}
               aoAlterar={(id, mudancas) => atualizarElementos([id], mudancas)}
@@ -541,6 +677,49 @@ export function CanvasEditor() {
 
         {/* Camada de UI: guias, marquee e transformer (oculta na exportação) */}
         <Layer ref={camadaUiRef}>
+          {/* Grade de alinhamento (toggle no menu de contexto / paleta) */}
+          {mostrarGrade &&
+            Array.from(
+              { length: Math.floor(projeto.larguraCanvas / TAM_GRADE) },
+              (_, i) => (
+                <Line
+                  key={`gv${i}`}
+                  points={[(i + 1) * TAM_GRADE, 0, (i + 1) * TAM_GRADE, projeto.alturaCanvas]}
+                  stroke="#7c4dff"
+                  opacity={0.12}
+                  strokeWidth={1 / zoom}
+                  listening={false}
+                />
+              ),
+            )}
+          {mostrarGrade &&
+            Array.from(
+              { length: Math.floor(projeto.alturaCanvas / TAM_GRADE) },
+              (_, i) => (
+                <Line
+                  key={`gh${i}`}
+                  points={[0, (i + 1) * TAM_GRADE, projeto.larguraCanvas, (i + 1) * TAM_GRADE]}
+                  stroke="#7c4dff"
+                  opacity={0.12}
+                  strokeWidth={1 / zoom}
+                  listening={false}
+                />
+              ),
+            )}
+
+          {/* Prévia do traço do lápis à mão livre */}
+          {lapis && lapis.length > 1 && (
+            <Line
+              points={lapis.flatMap((p) => [p.x, p.y])}
+              stroke="#7c4dff"
+              strokeWidth={4 / zoom}
+              tension={0.4}
+              lineCap="round"
+              lineJoin="round"
+              listening={false}
+            />
+          )}
+
           {guias.map((guia, i) => (
             <Fragment key={i}>
               <Line
@@ -674,6 +853,18 @@ export function CanvasEditor() {
                   <IconeTras tamanho={16} />
                 </ItemMenu>
                 <SeparadorMenu />
+                {selecionados.length >= 2 && (
+                  <ItemMenu rotulo="Agrupar" atalho="Ctrl+G" onClick={acaoMenu(agruparSelecionados)}>
+                    <IconeAgrupar tamanho={16} />
+                  </ItemMenu>
+                )}
+                {selecionados.some(
+                  (id) => pagina.elementos.find((it) => it.id === id)?.grupoId,
+                ) && (
+                  <ItemMenu rotulo="Desagrupar" atalho="Ctrl+Shift+G" onClick={acaoMenu(desagruparSelecionados)}>
+                    <IconeDesagrupar tamanho={16} />
+                  </ItemMenu>
+                )}
                 <ItemMenu
                   rotulo="Bloquear"
                   onClick={acaoMenu(() => atualizarElementos(selecionados, { bloqueado: true }))}
@@ -696,6 +887,12 @@ export function CanvasEditor() {
                 </ItemMenu>
                 <ItemMenu rotulo="Zoom 100%" onClick={acaoMenu(() => definirZoom(1))}>
                   <span className="w-4 text-center text-[10px] font-bold">1:1</span>
+                </ItemMenu>
+                <ItemMenu
+                  rotulo={mostrarGrade ? 'Ocultar grade' : 'Mostrar grade'}
+                  onClick={acaoMenu(alternarGrade)}
+                >
+                  <IconeGrade tamanho={16} />
                 </ItemMenu>
               </>
             )}

@@ -7,6 +7,7 @@
 import { useEffect } from 'react'
 import { useEditorStore } from '../estado/useEditorStore'
 import { useColabStore } from '../estado/useColabStore'
+import { useUiStore } from '../estado/useUiStore'
 
 export function useAtalhosTeclado() {
   useEffect(() => {
@@ -64,6 +65,15 @@ export function useAtalhosTeclado() {
             e.preventDefault()
             estado.salvarAgora()
             return
+          case 'g':
+            e.preventDefault()
+            if (e.shiftKey) estado.desagruparSelecionados()
+            else estado.agruparSelecionados()
+            return
+          case 'f':
+            e.preventDefault()
+            useUiStore.getState().abrirBusca()
+            return
           default:
             return
         }
@@ -119,6 +129,9 @@ export function useAtalhosTeclado() {
           break
         case 'p':
           estado.definirFerramenta('caneta')
+          break
+        case 'b':
+          estado.definirFerramenta('lapis')
           break
       }
     }

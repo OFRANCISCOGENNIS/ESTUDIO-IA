@@ -67,6 +67,16 @@ interface EstadoEditor {
   alinharSelecionados: (
     eixo: 'esquerda' | 'centroH' | 'direita' | 'topo' | 'centroV' | 'base',
   ) => void
+  /** Distribui 3+ elementos com espaçamento igual entre os extremos */
+  distribuirSelecionados: (eixo: 'horizontal' | 'vertical') => void
+  /** Agrupa a seleção (2+): passam a selecionar e mover juntos */
+  agruparSelecionados: () => void
+  /** Remove o vínculo de grupo dos selecionados */
+  desagruparSelecionados: () => void
+  /** Define a cor principal dos selecionados (conta-gotas) */
+  definirCorSelecionados: (cor: string) => void
+  /** Substitui texto em TODAS as páginas (insensível a maiúsculas). Retorna nº de trocas */
+  substituirTexto: (busca: string, troca: string) => number
   definirCorFundo: (cor: string) => void
 
   /** Recolore o design da página ativa para uma paleta-alvo (temas/marca) */
@@ -423,6 +433,111 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
           }
         }),
       }))
+    },
+
+    distribuirSelecionados: (eixo) => {
+      const { selecionados } = get()
+      const alvos = elementosAtivos().filter(
+        (el) => selecionados.includes(el.id) && !el.bloqueado,
+      )
+      if (alvos.length < 3) return
+      const chave = eixo === 'horizontal' ? 'x' : 'y'
+      const medida = (el: Elemento) =>
+        eixo === 'horizontal' ? dimensoesDe(el).largura : dimensoesDe(el).altura
+      // Ordena pelo início; extremos ficam fixos e o miolo é espaçado igualmente
+      const ordenados = [...alvos].sort((a, b) => a[chave] - b[chave])
+      const primeiro = ordenados[0]
+      const ultimo = ordenados[ordenados.length - 1]
+      const inicio = primeiro[chave] + medida(primeiro)
+      const fim = ultimo[chave]
+      const miolo = ordenados.slice(1, -1)
+      const somaMiolo = miolo.reduce((s, el) => s + medida(el), 0)
+      const vao = (fim - inicio - somaMiolo) / (miolo.length + 1)
+      let cursor = inicio + vao
+      const novasPosicoes = new Map<string, number>()
+      for (const el of miolo) {
+        novasPosicoes.set(el.id, cursor)
+        cursor += medida(el) + vao
+      }
+      get().aplicarAlteracao((atual) => ({
+        ...atual,
+        elementos: atual.elementos.map((el) =>
+          novasPosicoes.has(el.id) ? { ...el, [chave]: novasPosicoes.get(el.id)! } : el,
+        ),
+      }))
+    },
+
+    agruparSelecionados: () => {
+      const { selecionados } = get()
+      if (selecionados.length < 2) return
+      const grupoId = nanoid(8)
+      get().aplicarAlteracao((atual) => ({
+        ...atual,
+        elementos: atual.elementos.map((el) =>
+          selecionados.includes(el.id) ? { ...el, grupoId } : el,
+        ),
+      }))
+    },
+
+    desagruparSelecionados: () => {
+      const { selecionados } = get()
+      if (selecionados.length === 0) return
+      get().aplicarAlteracao((atual) => ({
+        ...atual,
+        elementos: atual.elementos.map((el) =>
+          selecionados.includes(el.id) ? { ...el, grupoId: undefined } : el,
+        ),
+      }))
+    },
+
+    definirCorSelecionados: (cor) => {
+      const { selecionados } = get()
+      if (selecionados.length === 0) return
+      get().aplicarAlteracao((atual) => ({
+        ...atual,
+        elementos: atual.elementos.map((el) => {
+          if (!selecionados.includes(el.id) || el.bloqueado) return el
+          switch (el.tipo) {
+            case 'texto':
+            case 'linha':
+              return { ...el, cor }
+            case 'retangulo':
+            case 'elipse':
+            case 'triangulo':
+            case 'estrela':
+              return { ...el, preenchimento: cor, gradiente: undefined }
+            case 'caminho':
+              return { ...el, corBorda: cor }
+            case 'tabela':
+              return { ...el, corCabecalho: cor }
+            default:
+              return el
+          }
+        }),
+      }))
+    },
+
+    substituirTexto: (busca, troca) => {
+      const { projeto } = get()
+      if (!projeto || !busca) return 0
+      const padrao = new RegExp(busca.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+      let trocas = 0
+      const paginas = projeto.paginas.map((p) => ({
+        ...p,
+        elementos: p.elementos.map((el) => {
+          if (el.tipo !== 'texto') return el
+          const ocorrencias = el.texto.match(padrao)?.length ?? 0
+          if (ocorrencias === 0) return el
+          trocas += ocorrencias
+          return { ...el, texto: el.texto.replace(padrao, troca) }
+        }),
+      }))
+      if (trocas === 0) return 0
+      historico.registrar(snapshotDe(projeto))
+      atualizarFlagsHistorico()
+      set({ projeto: { ...projeto, paginas } })
+      agendarSalvamento()
+      return trocas
     },
 
     definirCorFundo: (cor) => {

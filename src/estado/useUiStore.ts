@@ -23,6 +23,12 @@ interface EstadoUi {
   arrastando: boolean
   /** Contador de pedidos de "encaixar na tela" (CanvasEditor observa) */
   pedidoEncaixe: number
+  /** Grade de alinhamento visível (com snap) */
+  mostrarGrade: boolean
+  /** Diálogo Localizar e substituir */
+  buscaAberta: boolean
+  /** Painel do verificador de acessibilidade */
+  acessibilidadeAberta: boolean
   definirAba: (aba: string) => void
   definirLarguraPainel: (px: number) => void
   abrirPaleta: () => void
@@ -30,6 +36,11 @@ interface EstadoUi {
   alternarPaleta: () => void
   definirArrastando: (v: boolean) => void
   solicitarEncaixe: () => void
+  alternarGrade: () => void
+  abrirBusca: () => void
+  fecharBusca: () => void
+  abrirAcessibilidade: () => void
+  fecharAcessibilidade: () => void
 }
 
 export const useUiStore = create<EstadoUi>((set) => ({
@@ -38,6 +49,9 @@ export const useUiStore = create<EstadoUi>((set) => ({
   paletaAberta: false,
   arrastando: false,
   pedidoEncaixe: 0,
+  mostrarGrade: false,
+  buscaAberta: false,
+  acessibilidadeAberta: false,
 
   definirAba: (aba) => set({ abaFerramentas: aba }),
 
@@ -52,6 +66,11 @@ export const useUiStore = create<EstadoUi>((set) => ({
   alternarPaleta: () => set((e) => ({ paletaAberta: !e.paletaAberta })),
   definirArrastando: (v) => set({ arrastando: v }),
   solicitarEncaixe: () => set((e) => ({ pedidoEncaixe: e.pedidoEncaixe + 1 })),
+  alternarGrade: () => set((e) => ({ mostrarGrade: !e.mostrarGrade })),
+  abrirBusca: () => set({ buscaAberta: true }),
+  fecharBusca: () => set({ buscaAberta: false }),
+  abrirAcessibilidade: () => set({ acessibilidadeAberta: true }),
+  fecharAcessibilidade: () => set({ acessibilidadeAberta: false }),
 }))
 
 export const LIMITES_PAINEL = { min: MIN_PAINEL, max: MAX_PAINEL }

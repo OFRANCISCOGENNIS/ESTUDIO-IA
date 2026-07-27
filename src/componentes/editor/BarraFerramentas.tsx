@@ -21,13 +21,16 @@ import { PainelMarca } from './PainelMarca'
 import { PainelColab } from './PainelColab'
 import { PainelTime } from './PainelTime'
 import { listarPlugins } from '../../nucleo/plugins/registro'
+import { qrParaSvgDataUrl } from '../../nucleo/qr'
 import {
   IconeAlvo,
   IconeBlocos,
   IconeFaisca,
   IconeFormas,
   IconeFoto,
+  IconeLapis,
   IconePaleta,
+  IconeQr,
   IconePasta,
   IconePessoas,
   IconePredio,
@@ -89,6 +92,8 @@ export function BarraFerramentas() {
   const [uploads, setUploads] = useState<ImagemCarregada[]>([])
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaTemplate | 'Todos'>('Todos')
   const [buscaTemplate, setBuscaTemplate] = useState('')
+  const [qrTexto, setQrTexto] = useState('')
+  const [erroQr, setErroQr] = useState('')
 
   // Trocar de aba por fora (paleta de comandos) reabre o painel
   useEffect(() => {
@@ -359,6 +364,16 @@ export function BarraFerramentas() {
                   <span>Caneta</span>
                 </button>
                 <button
+                  onClick={() => definirFerramenta('lapis')}
+                  className={classeBotaoBloco}
+                  title="Lápis (B) — desenhe à mão livre arrastando o mouse"
+                >
+                  <span className="text-primaria-500">
+                    <IconeLapis tamanho={24} />
+                  </span>
+                  <span>Lápis</span>
+                </button>
+                <button
                   onClick={() =>
                     adicionarElemento(criarGrafico(centrarX(480), centrarY(320)))
                   }
@@ -379,6 +394,44 @@ export function BarraFerramentas() {
                   <span>Tabela</span>
                 </button>
               </div>
+            </div>
+
+            <div>
+              <h3 className={classeRotuloSecao}>QR Code</h3>
+              <div className="flex gap-2">
+                <input
+                  value={qrTexto}
+                  onChange={(e) => {
+                    setQrTexto(e.target.value)
+                    setErroQr('')
+                  }}
+                  placeholder="https://seusite.com.br"
+                  className="campo-texto"
+                  aria-label="Conteúdo do QR Code"
+                />
+                <button
+                  onClick={() => {
+                    try {
+                      const url = qrParaSvgDataUrl(qrTexto.trim())
+                      const lado = Math.min(projeto.larguraCanvas, projeto.alturaCanvas) * 0.35
+                      adicionarElemento(
+                        criarImagem(url, centrarX(lado), centrarY(lado), lado, lado, {
+                          nome: 'QR Code',
+                        }),
+                      )
+                      setQrTexto('')
+                    } catch (erro) {
+                      setErroQr(erro instanceof Error ? erro.message : 'Falha ao gerar o QR')
+                    }
+                  }}
+                  disabled={qrTexto.trim() === ''}
+                  className="botao-primario flex shrink-0 items-center gap-1.5 disabled:pointer-events-none disabled:opacity-40"
+                  title="Gerar QR Code e inserir no canvas"
+                >
+                  <IconeQr tamanho={15} /> Gerar
+                </button>
+              </div>
+              {erroQr && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{erroQr}</p>}
             </div>
 
             <div>

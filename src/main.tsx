@@ -1,13 +1,16 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { LimiteErro } from './componentes/LimiteErro'
 import './styles/index.css'
 // Registra os plugins de exemplo (arquitetura de extensões)
 import './nucleo/plugins/exemplos'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <LimiteErro>
+      <App />
+    </LimiteErro>
   </React.StrictMode>,
 )
 

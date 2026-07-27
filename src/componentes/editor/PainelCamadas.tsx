@@ -15,19 +15,31 @@ import { useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 import type { Elemento, TipoElemento } from '../../tipos/projeto'
+import {
+  IconeCaminhoEl,
+  IconeElipseEl,
+  IconeEstrelaEl,
+  IconeFoto,
+  IconeGraficoEl,
+  IconeLinhaEl,
+  IconeRetanguloEl,
+  IconeTabelaEl,
+  IconeTipoTexto,
+  IconeTrianguloEl,
+} from '../icones/Icones'
 
-/** Ícone textual/emoji exibido conforme o tipo do elemento */
-const ICONES_TIPO: Record<TipoElemento, string> = {
-  texto: 'T',
-  retangulo: '▭',
-  elipse: '◯',
-  triangulo: '△',
-  estrela: '★',
-  linha: '/',
-  imagem: '🖼️',
-  caminho: '✎',
-  grafico: '📊',
-  tabela: '▦',
+/** Ícone SVG exibido conforme o tipo do elemento */
+const ICONES_TIPO: Record<TipoElemento, JSX.Element> = {
+  texto: <IconeTipoTexto tamanho={13} />,
+  retangulo: <IconeRetanguloEl tamanho={13} />,
+  elipse: <IconeElipseEl tamanho={13} />,
+  triangulo: <IconeTrianguloEl tamanho={13} />,
+  estrela: <IconeEstrelaEl tamanho={13} />,
+  linha: <IconeLinhaEl tamanho={13} />,
+  imagem: <IconeFoto tamanho={13} />,
+  caminho: <IconeCaminhoEl tamanho={13} />,
+  grafico: <IconeGraficoEl tamanho={13} />,
+  tabela: <IconeTabelaEl tamanho={13} />,
 }
 
 export function PainelCamadas() {

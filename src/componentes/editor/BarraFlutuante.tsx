@@ -11,6 +11,23 @@ import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 import { useColabStore } from '../../estado/useColabStore'
 import { useUiStore } from '../../estado/useUiStore'
 import { Elemento } from '../../tipos/projeto'
+import {
+  IconeAgrupar,
+  IconeContaGotas,
+  IconeDesagrupar,
+  IconeDistribuirH,
+  IconeDistribuirV,
+} from '../icones/Icones'
+
+/** API experimental de conta-gotas do navegador (Chromium) */
+interface EyeDropperAPI {
+  open: () => Promise<{ sRGBHex: string }>
+}
+declare global {
+  interface Window {
+    EyeDropper?: new () => EyeDropperAPI
+  }
+}
 
 /** Dimensões aproximadas (sem rotação) para o bounding box da seleção */
 function dimensoes(el: Elemento): { largura: number; altura: number } {
@@ -59,6 +76,10 @@ export function BarraFlutuante() {
   const moverCamada = useEditorStore((s) => s.moverCamada)
   const alinharSelecionados = useEditorStore((s) => s.alinharSelecionados)
   const atualizarElementos = useEditorStore((s) => s.atualizarElementos)
+  const agruparSelecionados = useEditorStore((s) => s.agruparSelecionados)
+  const desagruparSelecionados = useEditorStore((s) => s.desagruparSelecionados)
+  const distribuirSelecionados = useEditorStore((s) => s.distribuirSelecionados)
+  const definirCorSelecionados = useEditorStore((s) => s.definirCorSelecionados)
 
   const arrastando = useUiStore((s) => s.arrastando)
   const podeEditar = useColabStore((s) => s.papel === 'editor')
@@ -126,7 +147,42 @@ export function BarraFlutuante() {
             <Acao titulo="Centralizar na vertical" onClick={() => alinharSelecionados('centroV')}>
               <IconeCentroV />
             </Acao>
+            {alvos.length >= 3 && (
+              <>
+                <Acao titulo="Distribuir na horizontal" onClick={() => distribuirSelecionados('horizontal')}>
+                  <IconeDistribuirH tamanho={18} />
+                </Acao>
+                <Acao titulo="Distribuir na vertical" onClick={() => distribuirSelecionados('vertical')}>
+                  <IconeDistribuirV tamanho={18} />
+                </Acao>
+              </>
+            )}
             <Separador />
+            {alvos.length >= 2 && !alvos.some((el) => el.grupoId) && (
+              <Acao titulo="Agrupar (Ctrl+G)" onClick={agruparSelecionados}>
+                <IconeAgrupar tamanho={18} />
+              </Acao>
+            )}
+            {alvos.some((el) => el.grupoId) && (
+              <Acao titulo="Desagrupar (Ctrl+Shift+G)" onClick={desagruparSelecionados}>
+                <IconeDesagrupar tamanho={18} />
+              </Acao>
+            )}
+            {typeof window !== 'undefined' && window.EyeDropper && (
+              <Acao
+                titulo="Conta-gotas: capturar cor da tela"
+                onClick={async () => {
+                  try {
+                    const resultado = await new window.EyeDropper!().open()
+                    definirCorSelecionados(resultado.sRGBHex)
+                  } catch {
+                    // Usuário cancelou a captura — nada a fazer
+                  }
+                }}
+              >
+                <IconeContaGotas tamanho={18} />
+              </Acao>
+            )}
             <Acao
               titulo="Bloquear seleção"
               onClick={() => atualizarElementos(selecionados, { bloqueado: true })}

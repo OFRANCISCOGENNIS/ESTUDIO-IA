@@ -46,6 +46,9 @@ export function PaletaComandos() {
   const fechar = useUiStore((s) => s.fecharPaleta)
   const alternar = useUiStore((s) => s.alternarPaleta)
   const definirAba = useUiStore((s) => s.definirAba)
+  const abrirBusca = useUiStore((s) => s.abrirBusca)
+  const abrirAcessibilidade = useUiStore((s) => s.abrirAcessibilidade)
+  const alternarGrade = useUiStore((s) => s.alternarGrade)
 
   const projeto = useEditorStore((s) => s.projeto)
   const selecionados = useEditorStore((s) => s.selecionados)
@@ -55,6 +58,10 @@ export function PaletaComandos() {
   const removerSelecionados = useEditorStore((s) => s.removerSelecionados)
   const moverCamada = useEditorStore((s) => s.moverCamada)
   const alinharSelecionados = useEditorStore((s) => s.alinharSelecionados)
+  const agruparSelecionados = useEditorStore((s) => s.agruparSelecionados)
+  const desagruparSelecionados = useEditorStore((s) => s.desagruparSelecionados)
+  const distribuirSelecionados = useEditorStore((s) => s.distribuirSelecionados)
+  const definirFerramenta = useEditorStore((s) => s.definirFerramenta)
   const adicionarPagina = useEditorStore((s) => s.adicionarPagina)
   const duplicarPagina = useEditorStore((s) => s.duplicarPagina)
   const paginaAtivaId = useEditorStore((s) => s.paginaAtivaId)
@@ -128,7 +135,18 @@ export function PaletaComandos() {
       { id: 'nav-marca', secao: 'Ir para', titulo: 'Kit de marca', executar: irParaAba('Marca') },
       { id: 'nav-colaborar', secao: 'Ir para', titulo: 'Colaborar', executar: irParaAba('Colaborar') },
 
+      // ---- Ferramentas ----
+      { id: 'fer-lapis', secao: 'Ferramentas', titulo: 'Lápis (desenho à mão livre)', atalho: 'B', executar: () => definirFerramenta('lapis') },
+      { id: 'fer-caneta', secao: 'Ferramentas', titulo: 'Caneta vetorial', atalho: 'P', executar: () => definirFerramenta('caneta') },
+      { id: 'fer-busca', secao: 'Ferramentas', titulo: 'Localizar e substituir', atalho: 'Ctrl+F', executar: abrirBusca },
+      { id: 'fer-acessibilidade', secao: 'Ferramentas', titulo: 'Verificar acessibilidade (contraste)', executar: abrirAcessibilidade },
+      { id: 'fer-grade', secao: 'Ferramentas', titulo: 'Mostrar/ocultar grade', executar: alternarGrade },
+
       // ---- Organizar (dependem de seleção) ----
+      { id: 'org-agrupar', secao: 'Organizar', titulo: 'Agrupar seleção', atalho: 'Ctrl+G', inativo: selecionados.length < 2, executar: agruparSelecionados },
+      { id: 'org-desagrupar', secao: 'Organizar', titulo: 'Desagrupar seleção', atalho: 'Ctrl+Shift+G', inativo: !temSelecao, executar: desagruparSelecionados },
+      { id: 'org-distribuir-h', secao: 'Organizar', titulo: 'Distribuir na horizontal', inativo: selecionados.length < 3, executar: () => distribuirSelecionados('horizontal') },
+      { id: 'org-distribuir-v', secao: 'Organizar', titulo: 'Distribuir na vertical', inativo: selecionados.length < 3, executar: () => distribuirSelecionados('vertical') },
       { id: 'org-duplicar', secao: 'Organizar', titulo: 'Duplicar seleção', atalho: 'Ctrl+D', inativo: !temSelecao, executar: duplicarSelecionados },
       { id: 'org-excluir', secao: 'Organizar', titulo: 'Excluir seleção', atalho: 'Del', inativo: !temSelecao, executar: removerSelecionados },
       { id: 'org-frente', secao: 'Organizar', titulo: 'Trazer para frente', inativo: !temSelecao, executar: () => selecionados.forEach((id) => moverCamada(id, 'frente')) },
@@ -150,6 +168,8 @@ export function PaletaComandos() {
     projeto, temSelecao, selecionados, paginaAtivaId,
     definirAba, fechar, adicionarElemento, definirTextoEmEdicao,
     duplicarSelecionados, removerSelecionados, moverCamada, alinharSelecionados,
+    agruparSelecionados, desagruparSelecionados, distribuirSelecionados, definirFerramenta,
+    abrirBusca, abrirAcessibilidade, alternarGrade,
     adicionarPagina, duplicarPagina, iniciarApresentacao, definirZoom, desfazer, refazer,
   ])
 

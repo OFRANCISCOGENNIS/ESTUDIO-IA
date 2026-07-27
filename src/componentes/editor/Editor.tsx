@@ -15,6 +15,8 @@ import { BarraFlutuante } from './BarraFlutuante'
 import { BarraPaginas } from './BarraPaginas'
 import { BarraSuperior } from './BarraSuperior'
 import { CanvasEditor } from './CanvasEditor'
+import { DialogoBusca } from './DialogoBusca'
+import { PainelAcessibilidade } from './PainelAcessibilidade'
 import { PaletaComandos } from './PaletaComandos'
 import { PainelCamadas } from './PainelCamadas'
 import { PainelPropriedades } from './PainelPropriedades'
@@ -90,6 +92,8 @@ export function Editor({ temaEscuro, aoAlternarTema }: Props) {
         </aside>
       </div>
       <PaletaComandos />
+      <DialogoBusca />
+      <PainelAcessibilidade />
       {apresentando && <ModoApresentacao />}
     </div>
   )

@@ -241,3 +241,132 @@ export const IconeX = (p: PropsIcone) => (
     <path d="m6 6 12 12M18 6 6 18" />
   </Icone>
 )
+
+// ---------------- Ferramentas Pro ----------------
+
+export const IconeAgrupar = (p: PropsIcone) => (
+  <Icone {...p}>
+    <rect x="3" y="3" width="8" height="8" rx="1.5" />
+    <rect x="13" y="13" width="8" height="8" rx="1.5" />
+    <path d="M13 7h3a1 1 0 0 1 1 1v3M11 17H8a1 1 0 0 1-1-1v-3" />
+  </Icone>
+)
+
+export const IconeDesagrupar = (p: PropsIcone) => (
+  <Icone {...p}>
+    <rect x="3" y="3" width="8" height="8" rx="1.5" />
+    <rect x="13" y="13" width="8" height="8" rx="1.5" />
+    <path d="m14.5 9.5 5-5m-15 15 5-5" />
+  </Icone>
+)
+
+export const IconeDistribuirH = (p: PropsIcone) => (
+  <Icone {...p}>
+    <path d="M4 4v16M20 4v16" />
+    <rect x="9.5" y="8" width="5" height="8" rx="1" />
+  </Icone>
+)
+
+export const IconeDistribuirV = (p: PropsIcone) => (
+  <Icone {...p}>
+    <path d="M4 4h16M4 20h16" />
+    <rect x="8" y="9.5" width="8" height="5" rx="1" />
+  </Icone>
+)
+
+export const IconeContaGotas = (p: PropsIcone) => (
+  <Icone {...p}>
+    <path d="m13.2 5.2 2-2a2.4 2.4 0 0 1 3.4 0l2.2 2.2a2.4 2.4 0 0 1 0 3.4l-2 2M13.2 5.2 4.6 13.8a2 2 0 0 0-.55 1.05L3.3 19.2a1.2 1.2 0 0 0 1.5 1.5l4.35-.75a2 2 0 0 0 1.05-.55l8.6-8.6M13.2 5.2l5.6 5.6" />
+  </Icone>
+)
+
+export const IconeGrade = (p: PropsIcone) => (
+  <Icone {...p}>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="2" />
+    <path d="M9.2 3.5v17m5.6-17v17M3.5 9.2h17m-17 5.6h17" />
+  </Icone>
+)
+
+export const IconeBusca = (p: PropsIcone) => (
+  <Icone {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </Icone>
+)
+
+export const IconeLapis = (p: PropsIcone) => (
+  <Icone {...p}>
+    <path d="M4 20l1-4.5L16.5 4a2.1 2.1 0 0 1 3 0l.5.5a2.1 2.1 0 0 1 0 3L8.5 19 4 20Z" />
+    <path d="m14.5 6 3.5 3.5" />
+  </Icone>
+)
+
+export const IconeQr = (p: PropsIcone) => (
+  <Icone {...p}>
+    <rect x="3.5" y="3.5" width="7" height="7" rx="1" />
+    <rect x="13.5" y="3.5" width="7" height="7" rx="1" />
+    <rect x="3.5" y="13.5" width="7" height="7" rx="1" />
+    <path d="M13.5 13.5h3v3h-3zM17.5 17.5h3v3h-3z" />
+  </Icone>
+)
+
+export const IconeAcessivel = (p: PropsIcone) => (
+  <Icone {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8 12.5 2.5 2.5L16 9.5" />
+  </Icone>
+)
+
+// ---------------- Tipos de elemento (painel de camadas) ----------------
+
+export const IconeRetanguloEl = (p: PropsIcone) => (
+  <Icone {...p}>
+    <rect x="4" y="6" width="16" height="12" rx="1.5" />
+  </Icone>
+)
+
+export const IconeElipseEl = (p: PropsIcone) => (
+  <Icone {...p}>
+    <ellipse cx="12" cy="12" rx="8.5" ry="6.5" />
+  </Icone>
+)
+
+export const IconeTrianguloEl = (p: PropsIcone) => (
+  <Icone {...p}>
+    <path d="M12 5 20 19H4L12 5Z" />
+  </Icone>
+)
+
+export const IconeEstrelaEl = (p: PropsIcone) => (
+  <Icone {...p}>
+    <path d="m12 3.5 2.5 5.4 5.9.6-4.4 4 1.2 5.8L12 16.4l-5.2 2.9 1.2-5.8-4.4-4 5.9-.6L12 3.5Z" />
+  </Icone>
+)
+
+export const IconeLinhaEl = (p: PropsIcone) => (
+  <Icone {...p}>
+    <path d="M5 19 19 5" />
+  </Icone>
+)
+
+export const IconeCaminhoEl = (p: PropsIcone) => (
+  <Icone {...p}>
+    <path d="M4 18c4-8 8 4 12-8" />
+    <circle cx="4" cy="18" r="1.6" />
+    <circle cx="20" cy="8" r="1.6" />
+  </Icone>
+)
+
+export const IconeGraficoEl = (p: PropsIcone) => (
+  <Icone {...p}>
+    <path d="M4 20V4m0 16h16" />
+    <path d="M8 16v-5m4 5V8m4 8v-3" />
+  </Icone>
+)
+
+export const IconeTabelaEl = (p: PropsIcone) => (
+  <Icone {...p}>
+    <rect x="4" y="5" width="16" height="14" rx="1.5" />
+    <path d="M4 10h16M10 10v9m5-9v9" />
+  </Icone>
+)

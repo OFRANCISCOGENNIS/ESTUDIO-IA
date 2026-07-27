@@ -67,6 +67,8 @@ export interface ElementoBase {
   mistura: ModoMistura
   /** Animação de entrada na apresentação */
   animacao: AnimacaoEntrada
+  /** Elementos com o mesmo grupoId selecionam/movem juntos (Ctrl+G) */
+  grupoId?: string
 }
 
 /** Gradiente de preenchimento (linear ou radial) com paradas de cor */
@@ -292,6 +294,7 @@ export type Ferramenta =
   | 'estrela'
   | 'linha'
   | 'caneta'
+  | 'lapis'
 
 /** Tamanhos predefinidos do botão "Criar design" */
 export interface Predefinicao {
