@@ -325,7 +325,7 @@ export function BarraSuperior({ temaEscuro, aoAlternarTema }: Props) {
         </button>
         <button
           onClick={() => definirZoom(1)}
-          className="w-14 text-center text-xs font-semibold tabular-nums text-superficie-900 transition hover:text-primaria-500 dark:text-superficie-100"
+          className="hidden w-14 text-center text-xs font-semibold tabular-nums text-superficie-900 transition hover:text-primaria-500 dark:text-superficie-100 sm:block"
           title="Redefinir zoom para 100%"
           aria-label="Redefinir zoom"
         >

@@ -228,6 +228,23 @@ body {
 .entra-painel {
   animation: entrar-painel var(--dur-media) var(--facil-saida) both;
 }
+
+/* Gaveta lateral da tela compacta. A animação é de ENTRADA (a gaveta só
+   existe no DOM enquanto aberta): mantê-la montada e deslocada para fora
+   somaria à largura do documento e criaria rolagem horizontal. */
+.entra-gaveta {
+  animation: entrar-gaveta var(--dur-media) var(--facil-saida) both;
+}
+@keyframes entrar-gaveta {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 @keyframes entrar-painel {
   from {
     opacity: 0;
@@ -247,7 +264,8 @@ body {
     transform: none;
   }
   .entra-item,
-  .entra-painel {
+  .entra-painel,
+  .entra-gaveta {
     animation: aparecer var(--dur-micro) linear both;
   }
   @keyframes aparecer {

@@ -6,6 +6,7 @@
 // =============================================================
 
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react'
+import { usaTelaCompacta } from '../../hooks/usaTelaCompacta'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { useUiStore } from '../../estado/useUiStore'
 import { criarForma, criarGrafico, criarImagem, criarLinha, criarTabela, criarTexto } from '../../nucleo/elementos'
@@ -94,7 +95,11 @@ export function BarraFerramentas() {
   // Aba ativa mora no store de UI para a paleta de comandos poder trocá-la
   const aba = useUiStore((s) => s.abaFerramentas) as Aba
   const definirAba = useUiStore((s) => s.definirAba)
-  const [recolhido, setRecolhido] = useState(false)
+  const compacta = usaTelaCompacta()
+  // Em tela compacta o painel começa fechado: quem abre o editor no
+  // celular quer ver o design, não a lista de modelos.
+  const [recolhido, setRecolhido] = useState(compacta)
+  useEffect(() => setRecolhido(compacta), [compacta])
   const [uploads, setUploads] = useState<ImagemCarregada[]>([])
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaTemplate | 'Todos'>('Todos')
   const [buscaTemplate, setBuscaTemplate] = useState('')
@@ -106,8 +111,14 @@ export function BarraFerramentas() {
   const refsAbas = useRef<Record<string, HTMLButtonElement | null>>({})
   const [indicador, setIndicador] = useState({ y: 0, altura: 0 })
 
-  // Trocar de aba por fora (paleta de comandos) reabre o painel
+  // Trocar de aba por fora (paleta de comandos) reabre o painel — mas
+  // não na montagem, que reabriria o painel recolhido da tela compacta.
+  const primeiraAba = useRef(true)
   useEffect(() => {
+    if (primeiraAba.current) {
+      primeiraAba.current = false
+      return
+    }
     setRecolhido(false)
   }, [aba])
 
@@ -677,7 +688,7 @@ export function BarraFerramentas() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full">
       {/* Trilha vertical de abas em 4 grupos */}
       <div
         ref={refTrilha}
@@ -731,13 +742,40 @@ export function BarraFerramentas() {
         ))}
       </div>
 
+      {/* Fundo que fecha o painel ao toque — só existe quando ele flutua */}
+      {!recolhido && compacta && (
+        <button
+          type="button"
+          aria-label="Fechar painel"
+          onClick={() => setRecolhido(true)}
+          className="fixed inset-0 z-20 bg-superficie-950/40"
+        />
+      )}
+
       {/* Painel expansível com o conteúdo da aba ativa.
-          A `key` faz o conteúdo re-animar a cada troca de aba (§7.2). */}
+          A `key` faz o conteúdo re-animar a cada troca de aba (§7.2).
+          Em tela compacta ele flutua sobre o canvas em vez de empurrá-lo:
+          espremido entre trilha e propriedades, não sobraria canvas. */}
       {!recolhido && (
         <div
           key={aba}
-          className="entra-painel rolagem-fina w-[260px] shrink-0 overflow-y-auto border-r border-superficie-200 bg-superficie-50 p-3 dark:border-superficie-800 dark:bg-superficie-950"
+          className={`entra-painel rolagem-fina overflow-y-auto border-r border-superficie-200 bg-superficie-50 p-3 dark:border-superficie-800 dark:bg-superficie-950 ${
+            compacta
+              ? 'absolute bottom-0 left-16 top-0 z-30 w-[min(280px,calc(100vw-4rem))] shadow-flutuante'
+              : 'w-[260px] shrink-0'
+          }`}
         >
+          {/* Flutuando, o painel cobre quase toda a tela: sobra uma faixa
+              de fundo estreita demais para servir de área de fechar. */}
+          {compacta && (
+            <button
+              type="button"
+              onClick={() => setRecolhido(true)}
+              className="mb-2 flex w-full items-center gap-1.5 rounded-lg px-1 py-2 text-sm font-semibold text-superficie-700 dark:text-superficie-200"
+            >
+              <span aria-hidden="true">✕</span> Fechar {aba}
+            </button>
+          )}
           {renderConteudo()}
         </div>
       )}

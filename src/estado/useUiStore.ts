@@ -34,6 +34,8 @@ interface EstadoUi {
   idRealcado: string | null
   /** Modal de atalhos de teclado (tecla "?") */
   atalhosAbertos: boolean
+  /** Gaveta de propriedades aberta (só usada em telas compactas) */
+  propriedadesAbertas: boolean
   definirAba: (aba: string) => void
   definirLarguraPainel: (px: number) => void
   abrirPaleta: () => void
@@ -49,6 +51,9 @@ interface EstadoUi {
   definirRealcado: (id: string | null) => void
   abrirAtalhos: () => void
   fecharAtalhos: () => void
+  abrirPropriedades: () => void
+  fecharPropriedades: () => void
+  alternarPropriedades: () => void
 }
 
 export const useUiStore = create<EstadoUi>((set) => ({
@@ -62,6 +67,7 @@ export const useUiStore = create<EstadoUi>((set) => ({
   acessibilidadeAberta: false,
   idRealcado: null,
   atalhosAbertos: false,
+  propriedadesAbertas: false,
 
   definirAba: (aba) => set({ abaFerramentas: aba }),
 
@@ -84,6 +90,9 @@ export const useUiStore = create<EstadoUi>((set) => ({
   definirRealcado: (id) => set({ idRealcado: id }),
   abrirAtalhos: () => set({ atalhosAbertos: true }),
   fecharAtalhos: () => set({ atalhosAbertos: false }),
+  abrirPropriedades: () => set({ propriedadesAbertas: true }),
+  fecharPropriedades: () => set({ propriedadesAbertas: false }),
+  alternarPropriedades: () => set((e) => ({ propriedadesAbertas: !e.propriedadesAbertas })),
 }))
 
 export const LIMITES_PAINEL = { min: MIN_PAINEL, max: MAX_PAINEL }
