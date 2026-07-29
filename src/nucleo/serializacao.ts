@@ -159,6 +159,9 @@ function normalizarElemento(bruto: Record<string, unknown>): Elemento | null {
     bloqueado: bruto.bloqueado === true,
     mistura: normalizarMistura(bruto.mistura),
     animacao: normalizarAnimacao(bruto.animacao),
+    // Sem isto o vínculo de grupo (Ctrl+G) sobrevivia ao undo — que não
+    // passa por aqui — mas sumia no primeiro recarregamento da página.
+    grupoId: typeof bruto.grupoId === 'string' ? bruto.grupoId : undefined,
   }
   switch (tipo) {
     case 'retangulo':

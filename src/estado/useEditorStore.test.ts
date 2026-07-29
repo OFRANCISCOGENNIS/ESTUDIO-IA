@@ -164,3 +164,41 @@ describe('useEditorStore — auto-save', () => {
     expect(editor.getState().estadoSalvamento).toBe('erro')
   })
 })
+
+describe('useEditorStore — agrupamento', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  it('mantém o vínculo de grupo depois de salvar e recarregar', async () => {
+    // O grupo sobrevivia ao undo (que não normaliza) mas sumia no
+    // recarregamento: `normalizarElemento` não copiava `grupoId`.
+    instalarLocalStorage()
+    const { editor, projetos } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+
+    editor.getState().selecionar(['txt-1', 'ret-1'])
+    editor.getState().agruparSelecionados()
+    editor.getState().salvarAgora()
+
+    const recarregado = projetos.getState().carregarProjeto('a')
+    const grupos = recarregado?.paginas[0].elementos.map((e) => e.grupoId)
+    expect(grupos?.[0]).toBeTruthy()
+    expect(grupos?.[0]).toBe(grupos?.[1])
+  })
+
+  it('desagrupar também persiste', async () => {
+    instalarLocalStorage()
+    const { editor, projetos } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+    editor.getState().selecionar(['txt-1', 'ret-1'])
+    editor.getState().agruparSelecionados()
+
+    editor.getState().desagruparSelecionados()
+    editor.getState().salvarAgora()
+
+    const recarregado = projetos.getState().carregarProjeto('a')
+    expect(recarregado?.paginas[0].elementos.every((e) => e.grupoId === undefined)).toBe(true)
+  })
+})
