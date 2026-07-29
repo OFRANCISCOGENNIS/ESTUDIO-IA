@@ -34,7 +34,8 @@ interface EstadoProjetos {
     elementos?: Elemento[],
   ) => Projeto
   carregarProjeto: (id: string) => Projeto | null
-  salvarProjeto: (projeto: Projeto) => void
+  /** Persiste o projeto. Devolve false quando não coube no localStorage. */
+  salvarProjeto: (projeto: Projeto) => boolean
   excluirProjeto: (id: string) => void
   renomearProjeto: (id: string, nome: string) => void
 }
@@ -50,8 +51,14 @@ function lerIndice(): ResumoProjeto[] {
   }
 }
 
-function gravarIndice(resumos: ResumoProjeto[]): void {
-  localStorage.setItem(CHAVE_INDICE, JSON.stringify(resumos))
+function gravarIndice(resumos: ResumoProjeto[]): boolean {
+  try {
+    localStorage.setItem(CHAVE_INDICE, JSON.stringify(resumos))
+    return true
+  } catch (erro) {
+    console.error('Falha ao gravar o índice de projetos', erro)
+    return false
+  }
 }
 
 function resumoDe(projeto: Projeto): ResumoProjeto {
@@ -108,8 +115,11 @@ export const useProjetosStore = create<EstadoProjetos>((set, get) => ({
   },
 
   salvarProjeto: (projeto) => {
+    let projetoGravado = false
+    let semMiniatura = false
     try {
       localStorage.setItem(prefixoProjeto(projeto.id), serializarProjeto(projeto))
+      projetoGravado = true
     } catch (erro) {
       // localStorage cheio (imagens grandes): salva sem miniatura como fallback
       console.error('Falha ao salvar projeto; tentando sem miniatura', erro)
@@ -118,14 +128,24 @@ export const useProjetosStore = create<EstadoProjetos>((set, get) => ({
           prefixoProjeto(projeto.id),
           serializarProjeto({ ...projeto, miniatura: undefined }),
         )
-      } catch {
-        // Sem espaço mesmo assim — mantém o app funcionando em memória
+        projetoGravado = true
+        semMiniatura = true
+      } catch (erroSemMiniatura) {
+        // Sem espaço mesmo assim — o app segue em memória, mas quem
+        // chamou precisa saber para poder avisar antes que o trabalho suma.
+        console.error('Falha ao salvar projeto mesmo sem miniatura', erroSemMiniatura)
       }
     }
+
+    // O índice também escreve no localStorage e pode estourar sozinho.
+    // Sem proteção, a exceção subia daqui e derrubava o auto-save.
     const semEste = lerIndice().filter((resumo) => resumo.id !== projeto.id)
-    const atualizado = [resumoDe(projeto), ...semEste]
-    gravarIndice(atualizado)
+    const resumo = semMiniatura ? { ...resumoDe(projeto), miniatura: undefined } : resumoDe(projeto)
+    const atualizado = [resumo, ...semEste]
+    const indiceGravado = gravarIndice(atualizado)
     set({ resumos: atualizado })
+
+    return projetoGravado && indiceGravado
   },
 
   excluirProjeto: (id) => {

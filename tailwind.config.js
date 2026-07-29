@@ -27,6 +27,16 @@ export default {
           800: 'oklch(36% 0.11 287 / <alpha-value>)',
           900: 'oklch(26% 0.07 287 / <alpha-value>)',
         },
+        // Cor semântica de risco (hue ~25). Fica separada do roxo da marca
+        // de propósito: "algo deu errado" não pode depender do acento, que
+        // já significa "ação principal" em toda a interface.
+        perigo: {
+          50: 'oklch(97% 0.02 25 / <alpha-value>)',
+          400: 'oklch(70% 0.16 25 / <alpha-value>)',
+          500: 'oklch(62% 0.19 25 / <alpha-value>)',
+          600: 'oklch(55% 0.20 25 / <alpha-value>)',
+          950: 'oklch(22% 0.06 25 / <alpha-value>)',
+        },
         // Superfícies (base para as variáveis semânticas --sup-* no CSS)
         superficie: {
           50: '#f8f9fb',

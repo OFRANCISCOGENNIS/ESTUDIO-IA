@@ -10,9 +10,21 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
+import { serializarProjeto } from '../../nucleo/serializacao'
+import { baixarBytes } from '../../nucleo/exportadores/documento'
 
 export function IndicadorSalvamento() {
   const estado = useEditorStore((s) => s.estadoSalvamento)
+  const projeto = useEditorStore((s) => s.projeto)
+
+  // Saída de emergência quando o localStorage encheu: o projeto está só
+  // na memória e some ao recarregar, então damos como levá-lo embora.
+  const baixarCopia = () => {
+    if (!projeto) return
+    const json = serializarProjeto(projeto)
+    const nome = projeto.nome.trim() || 'projeto'
+    baixarBytes(new TextEncoder().encode(json), 'application/json', `${nome}.json`)
+  }
   // Some com o "Salvo ✓" depois de 2s, mas só se nada mudar nesse meio-tempo
   const [recemSalvo, setRecemSalvo] = useState(false)
   const jaSalvouAlgo = useRef(false)
@@ -24,6 +36,40 @@ export function IndicadorSalvamento() {
     const t = setTimeout(() => setRecemSalvo(false), 2000)
     return () => clearTimeout(t)
   }, [estado])
+
+  // Falha de gravação é o único estado que interrompe: o trabalho está
+  // só na memória e some ao recarregar. Avisa alto e oferece a saída.
+  if (estado === 'erro') {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-perigo-600 dark:text-perigo-400"
+        role="alert"
+      >
+        <svg
+          aria-hidden="true"
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+        >
+          <path d="M12 8v5" />
+          <path d="M12 17h.01" />
+          <circle cx="12" cy="12" r="9" />
+        </svg>
+        Sem espaço para salvar
+        <button
+          type="button"
+          onClick={baixarCopia}
+          className="rounded-md px-1.5 py-0.5 underline decoration-dotted underline-offset-2 hover:bg-perigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-perigo-500 dark:hover:bg-perigo-950"
+        >
+          Baixar cópia
+        </button>
+      </span>
+    )
+  }
 
   const texto =
     estado === 'salvando'

@@ -17,7 +17,7 @@ import { debounce } from '../utilitarios/tempo'
 import { Comentario, Elemento, Ferramenta, Pagina, Projeto } from '../tipos/projeto'
 import { useProjetosStore } from './useProjetosStore'
 
-export type EstadoSalvamento = 'salvo' | 'pendente' | 'salvando'
+export type EstadoSalvamento = 'salvo' | 'pendente' | 'salvando' | 'erro'
 
 /** Parte do estado (por página) coberta pelo histórico de undo/redo */
 interface SnapshotPagina {
@@ -199,8 +199,10 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
       miniatura,
       atualizadoEm: new Date().toISOString(),
     }
-    useProjetosStore.getState().salvarProjeto(salvo)
-    set({ projeto: salvo, estadoSalvamento: 'salvo' })
+    // Quando o localStorage está cheio o projeto NÃO foi para o disco.
+    // Ficar em 'salvo' aqui esconderia a perda até o próximo recarregamento.
+    const persistido = useProjetosStore.getState().salvarProjeto(salvo)
+    set({ projeto: salvo, estadoSalvamento: persistido ? 'salvo' : 'erro' })
   }
   // Debounce por tipo de edição (§11.2): arrastar produz muitos eventos
   // seguidos e pode salvar rápido; digitar precisa de mais folga.
