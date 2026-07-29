@@ -89,12 +89,12 @@ interface EstadoEditor {
   redimensionarProjeto: (largura: number, altura: number) => void
   /**
    * Magic Resize em massa: gera CÓPIAS do projeto em vários formatos
-   * (novos projetos salvos), sem alterar o design atual. Retorna quantas
-   * variações foram criadas.
+   * (novos projetos salvos), sem alterar o design atual. Devolve quantas
+   * foram gravadas e quantas não couberam no armazenamento.
    */
   gerarVariacoesFormato: (
     formatos: { nome: string; largura: number; altura: number }[],
-  ) => number
+  ) => { criados: number; falharam: number }
 
   // ---- Páginas ----
   adicionarPagina: () => void
@@ -623,9 +623,10 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
 
     gerarVariacoesFormato: (formatos) => {
       const { projeto } = get()
-      if (!projeto) return 0
+      if (!projeto) return { criados: 0, falharam: 0 }
       const agora = new Date().toISOString()
       let criados = 0
+      let falharam = 0
       for (const f of formatos) {
         if (f.largura === projeto.larguraCanvas && f.altura === projeto.alturaCanvas) continue
         const paginas: Pagina[] = projeto.paginas.map((p) => ({
@@ -651,10 +652,13 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
           criadoEm: agora,
           atualizadoEm: agora,
         }
-        useProjetosStore.getState().salvarProjeto(copia)
-        criados++
+        // Cada cópia é um projeto inteiro; com o armazenamento perto do
+        // limite algumas não cabem. Contar antes de conferir anunciava
+        // "4 variações criadas" com zero gravadas.
+        if (useProjetosStore.getState().salvarProjeto(copia)) criados++
+        else falharam++
       }
-      return criados
+      return { criados, falharam }
     },
 
     // ---- Páginas ----

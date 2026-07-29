@@ -248,3 +248,40 @@ describe('useEditorStore — substituirTexto', () => {
     expect(textoDe(editor.getState().projeto)).toBe('Preço sob consulta')
   })
 })
+
+describe('useEditorStore — variações de formato', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  it('conta apenas as variações que realmente couberam', async () => {
+    // Antes contava o laço, não a gravação: anunciava "2 variações
+    // criadas" com o armazenamento cheio e nada salvo.
+    const loja = instalarLocalStorage()
+    const { editor } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+    loja.bloquear()
+
+    const resultado = editor.getState().gerarVariacoesFormato([
+      { nome: 'Story', largura: 1080, altura: 1920 },
+      { nome: 'Post', largura: 1080, altura: 1350 },
+    ])
+
+    expect(resultado).toEqual({ criados: 0, falharam: 2 })
+  })
+
+  it('grava as variações pedidas e ignora o formato atual', async () => {
+    instalarLocalStorage()
+    const { editor, projetos } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+
+    const resultado = editor.getState().gerarVariacoesFormato([
+      { nome: 'Story', largura: 1080, altura: 1920 },
+      { nome: 'Igual', largura: 1080, altura: 1080 },
+    ])
+
+    expect(resultado).toEqual({ criados: 1, falharam: 0 })
+    expect(projetos.getState().resumos.some((r) => r.nome.endsWith('· Story'))).toBe(true)
+  })
+})

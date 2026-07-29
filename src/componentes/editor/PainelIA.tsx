@@ -314,13 +314,16 @@ export function PainelIA() {
         <button
           onClick={() => {
             const escolhidos = PREDEFINICOES.filter((p) => formatosSel.includes(p.id))
-            const n = gerarVariacoesFormato(
+            const { criados, falharam } = gerarVariacoesFormato(
               escolhidos.map((p) => ({ nome: p.nome, largura: p.largura, altura: p.altura })),
             )
+            const feitas = `${criados} ${criados === 1 ? 'variação criada' : 'variações criadas'}`
             setMsgVariacoes(
-              n > 0
-                ? `✅ ${n} ${n === 1 ? 'variação criada' : 'variações criadas'} — veja no seletor de projetos (topo).`
-                : 'Selecione ao menos um formato diferente do atual.',
+              falharam > 0
+                ? `⚠️ Sem espaço para guardar ${falharam} ${falharam === 1 ? 'variação' : 'variações'}${criados > 0 ? ` (${feitas})` : ''}. Exclua projetos antigos e tente de novo.`
+                : criados > 0
+                  ? `✅ ${feitas} — veja no seletor de projetos (topo).`
+                  : 'Selecione ao menos um formato diferente do atual.',
             )
             setFormatosSel([])
           }}
