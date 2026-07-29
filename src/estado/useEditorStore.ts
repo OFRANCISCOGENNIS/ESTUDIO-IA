@@ -9,6 +9,7 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import { Historico } from '../nucleo/historico'
+import { desserializarComBanco, limparBanco, serializarComBanco } from '../nucleo/bancoImagens'
 import { clonarElemento } from '../nucleo/elementos'
 import { recolorirDesign } from '../nucleo/recolorir'
 import { redimensionarElementos } from '../nucleo/ia/redimensionar'
@@ -147,7 +148,9 @@ function snapshotDe(projeto: Projeto): string {
     larguraCanvas: projeto.larguraCanvas,
     alturaCanvas: projeto.alturaCanvas,
   }
-  return JSON.stringify(s)
+  // As imagens saem por referência: sem isso, cada um dos 100 passos do
+  // histórico carregaria uma cópia inteira do base64 de cada foto.
+  return serializarComBanco(s)
 }
 
 /** Índice e objeto da página ativa (ou -1/null) */
@@ -257,6 +260,8 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
 
     abrirProjeto: (projeto) => {
       historico.limpar()
+      // Sem snapshots vivos, nada mais referencia as imagens guardadas.
+      limparBanco()
       set({
         projeto,
         paginaAtivaId: projeto.paginas[0]?.id ?? '',
@@ -274,6 +279,8 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     fecharProjeto: () => {
       persistir()
       historico.limpar()
+      // Sem snapshots vivos, nada mais referencia as imagens guardadas.
+      limparBanco()
       set({ projeto: null, paginaAtivaId: '', selecionados: [], textoEmEdicao: null })
     },
 
@@ -794,7 +801,7 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
   function aplicarSnapshotPaginas(snapshot: string) {
     const { projeto, paginaAtivaId, selecionados } = get()
     if (!projeto) return
-    const dados = JSON.parse(snapshot) as SnapshotProjeto
+    const dados = desserializarComBanco<SnapshotProjeto>(snapshot)
     const paginas = dados.paginas
     const aindaExiste = paginas.some((p) => p.id === paginaAtivaId)
     const ativo = aindaExiste ? paginaAtivaId : paginas[0]?.id ?? ''
