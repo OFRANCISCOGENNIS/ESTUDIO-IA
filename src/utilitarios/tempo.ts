@@ -1,15 +1,27 @@
 // Utilitários de tempo (debounce e formatação de datas)
 
+/** Função adiada por `debounce`, com cancelamento da execução pendente */
+export interface Adiada<A extends unknown[]> {
+  (...args: A): void
+  /** Descarta a execução pendente, se houver */
+  cancelar: () => void
+}
+
 /** Debounce simples: adia a execução até `espera` ms após a última chamada */
 export function debounce<A extends unknown[]>(
   fn: (...args: A) => void,
   espera: number,
-): (...args: A) => void {
+): Adiada<A> {
   let temporizador: ReturnType<typeof setTimeout> | undefined
-  return (...args: A) => {
+  const adiada = ((...args: A) => {
     clearTimeout(temporizador)
     temporizador = setTimeout(() => fn(...args), espera)
+  }) as Adiada<A>
+  adiada.cancelar = () => {
+    clearTimeout(temporizador)
+    temporizador = undefined
   }
+  return adiada
 }
 
 /** Formata uma data ISO como texto relativo em português ("há 5 min") */

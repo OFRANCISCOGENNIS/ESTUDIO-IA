@@ -8,6 +8,7 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import { desserializarProjeto, serializarProjeto } from '../nucleo/serializacao'
+import { removerLocal } from '../utilitarios/armazenamento'
 import { Elemento, Projeto, VERSAO_ESQUEMA_ATUAL } from '../tipos/projeto'
 
 const CHAVE_INDICE = 'dsp:indice'
@@ -149,7 +150,9 @@ export const useProjetosStore = create<EstadoProjetos>((set, get) => ({
   },
 
   excluirProjeto: (id) => {
-    localStorage.removeItem(prefixoProjeto(id))
+    // Único acesso cru que sobrou da varredura de armazenamento: com o
+    // localStorage bloqueado, excluir um projeto derrubava o dashboard.
+    removerLocal(prefixoProjeto(id))
     const atualizado = lerIndice().filter((resumo) => resumo.id !== id)
     gravarIndice(atualizado)
     set({ resumos: atualizado })

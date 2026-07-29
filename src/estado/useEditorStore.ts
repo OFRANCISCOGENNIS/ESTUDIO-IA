@@ -213,8 +213,21 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
   const persistirNormal = debounce(persistir, 800)
   const agendarSalvamento = (ritmo: 'rapido' | 'normal' = 'normal') => {
     set({ estadoSalvamento: 'pendente' })
+    // Os dois ritmos levam ao MESMO `persistir`. Deixar os dois
+    // temporizadores vivos (arrastar e depois digitar, por exemplo)
+    // fazia o salvamento rodar duas vezes para a mesma edição: duas
+    // gravações e duas rasterizações de miniatura, com o indicador
+    // piscando de "salvo" de volta para "salvando".
+    persistirRapido.cancelar()
+    persistirNormal.cancelar()
     if (ritmo === 'rapido') persistirRapido()
     else persistirNormal()
+  }
+  /** Salva já, descartando o que estava agendado */
+  const persistirAgora = () => {
+    persistirRapido.cancelar()
+    persistirNormal.cancelar()
+    persistir()
   }
 
   const atualizarFlagsHistorico = () =>
@@ -259,6 +272,11 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     podeRefazer: false,
 
     abrirProjeto: (projeto) => {
+      // Um salvamento agendado do projeto ANTERIOR dispararia depois da
+      // troca e, como `persistir` lê o estado atual, gravaria o projeto
+      // NOVO — as últimas edições do anterior sumiriam sem aviso.
+      // Trocar de projeto pelo seletor do topo bastava para reproduzir.
+      if (get().projeto) persistirAgora()
       historico.limpar()
       // Sem snapshots vivos, nada mais referencia as imagens guardadas.
       limparBanco()
@@ -277,7 +295,7 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     },
 
     fecharProjeto: () => {
-      persistir()
+      persistirAgora()
       historico.limpar()
       // Sem snapshots vivos, nada mais referencia as imagens guardadas.
       limparBanco()
@@ -794,7 +812,7 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
       aplicarSnapshotPaginas(proximo)
     },
 
-    salvarAgora: persistir,
+    salvarAgora: persistirAgora,
   }
 
   /** Restaura um snapshot (undo/redo) preservando a página ativa */
