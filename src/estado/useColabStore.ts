@@ -67,14 +67,25 @@ export const useColabStore = create<EstadoColab>((set, get) => {
 
   const enviar = (m: MensagemColab) => obterTransporteColab().enviar(m)
 
-  const upsertParticipante = (u: Usuario, x = 0, y = 0) => {
+  // `x`/`y` só vêm nas mensagens de cursor. Presença e entrada não
+  // carregam posição: sem preservar a última conhecida, o heartbeat de
+  // 2 s jogava o cursor de cada colega para o canto superior esquerdo.
+  const upsertParticipante = (u: Usuario, x?: number, y?: number) => {
     if (u.id === get().usuario.id) return
-    set((estado) => ({
-      participantes: {
-        ...estado.participantes,
-        [u.id]: { ...u, x, y, ultimoVisto: Date.now() },
-      },
-    }))
+    set((estado) => {
+      const anterior = estado.participantes[u.id]
+      return {
+        participantes: {
+          ...estado.participantes,
+          [u.id]: {
+            ...u,
+            x: x ?? anterior?.x ?? 0,
+            y: y ?? anterior?.y ?? 0,
+            ultimoVisto: Date.now(),
+          },
+        },
+      }
+    })
   }
 
   const aoReceber = (m: MensagemColab) => {
