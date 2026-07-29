@@ -5,13 +5,14 @@
 // =============================================================
 
 import { create } from 'zustand'
+import { gravarLocal, lerLocal } from '../utilitarios/armazenamento'
 
 const CHAVE_LARGURA = 'dsp:larguraPainel'
 const MIN_PAINEL = 240
 const MAX_PAINEL = 400
 
 function lerLargura(): number {
-  const v = Number(localStorage.getItem(CHAVE_LARGURA))
+  const v = Number(lerLocal(CHAVE_LARGURA))
   return Number.isFinite(v) && v >= MIN_PAINEL && v <= MAX_PAINEL ? v : 320
 }
 
@@ -66,7 +67,7 @@ export const useUiStore = create<EstadoUi>((set) => ({
 
   definirLarguraPainel: (px) => {
     const largura = Math.max(MIN_PAINEL, Math.min(MAX_PAINEL, Math.round(px)))
-    localStorage.setItem(CHAVE_LARGURA, String(largura))
+    gravarLocal(CHAVE_LARGURA, String(largura))
     set({ larguraPainel: largura })
   },
 

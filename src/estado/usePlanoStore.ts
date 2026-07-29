@@ -3,11 +3,12 @@
 
 import { create } from 'zustand'
 import { Plano } from '../dados/planos'
+import { gravarLocal, lerLocal } from '../utilitarios/armazenamento'
 
 const CHAVE = 'dsp:plano'
 
 function lerPlano(): Plano {
-  const v = localStorage.getItem(CHAVE)
+  const v = lerLocal(CHAVE)
   return v === 'pro' || v === 'time' ? v : 'gratuito'
 }
 
@@ -19,7 +20,7 @@ interface EstadoPlano {
 export const usePlanoStore = create<EstadoPlano>((set) => ({
   plano: lerPlano(),
   definirPlano: (plano) => {
-    localStorage.setItem(CHAVE, plano)
+    gravarLocal(CHAVE, plano)
     set({ plano })
   },
 }))

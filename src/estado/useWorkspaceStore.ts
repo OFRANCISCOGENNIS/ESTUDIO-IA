@@ -5,6 +5,7 @@
 
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
+import { gravarLocal, lerLocal } from '../utilitarios/armazenamento'
 
 export interface MembroTime {
   nome: string
@@ -31,7 +32,7 @@ const CORES = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899']
 
 function ler(): Workspace[] {
   try {
-    const bruto = localStorage.getItem(CHAVE)
+    const bruto = lerLocal(CHAVE)
     const lista = bruto ? JSON.parse(bruto) : []
     return Array.isArray(lista) ? (lista as Workspace[]) : []
   } catch {
@@ -41,7 +42,7 @@ function ler(): Workspace[] {
 
 function gravar(ws: Workspace[]): void {
   try {
-    localStorage.setItem(CHAVE, JSON.stringify(ws))
+    gravarLocal(CHAVE, JSON.stringify(ws))
   } catch {
     // Sem espaço (assets grandes) — mantém em memória
   }

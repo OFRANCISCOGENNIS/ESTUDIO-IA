@@ -7,6 +7,7 @@ import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import { desserializarProjeto, serializarProjeto } from '../nucleo/serializacao'
 import { Projeto } from '../tipos/projeto'
+import { gravarLocal, lerLocal } from '../utilitarios/armazenamento'
 
 export interface Versao {
   id: string
@@ -20,7 +21,7 @@ const chave = (projetoId: string) => `dsp:versoes:${projetoId}`
 
 function ler(projetoId: string): Versao[] {
   try {
-    const bruto = localStorage.getItem(chave(projetoId))
+    const bruto = lerLocal(chave(projetoId))
     const lista = bruto ? JSON.parse(bruto) : []
     return Array.isArray(lista) ? (lista as Versao[]) : []
   } catch {
@@ -30,7 +31,7 @@ function ler(projetoId: string): Versao[] {
 
 function gravar(projetoId: string, versoes: Versao[]): void {
   try {
-    localStorage.setItem(chave(projetoId), JSON.stringify(versoes))
+    gravarLocal(chave(projetoId), JSON.stringify(versoes))
   } catch {
     // Sem espaço — mantém em memória
   }

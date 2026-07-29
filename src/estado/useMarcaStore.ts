@@ -6,6 +6,7 @@
 
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
+import { gravarLocal, lerLocal } from '../utilitarios/armazenamento'
 
 const CHAVE = 'dsp:marcas'
 
@@ -20,7 +21,7 @@ export interface KitMarca {
 
 function ler(): KitMarca[] {
   try {
-    const bruto = localStorage.getItem(CHAVE)
+    const bruto = lerLocal(CHAVE)
     const lista = bruto ? JSON.parse(bruto) : []
     return Array.isArray(lista) ? (lista as KitMarca[]) : []
   } catch {
@@ -30,7 +31,7 @@ function ler(): KitMarca[] {
 
 function gravar(kits: KitMarca[]): void {
   try {
-    localStorage.setItem(CHAVE, JSON.stringify(kits))
+    gravarLocal(CHAVE, JSON.stringify(kits))
   } catch {
     // Armazenamento cheio (logos grandes) — mantém em memória
   }

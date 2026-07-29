@@ -9,6 +9,7 @@ import { useEditorStore } from './estado/useEditorStore'
 import { useProjetosStore } from './estado/useProjetosStore'
 import { useColabStore } from './estado/useColabStore'
 import { Papel } from './nucleo/colab/tipos'
+import { gravarLocal, lerLocal } from './utilitarios/armazenamento'
 
 const CHAVE_TEMA = 'dsp:tema'
 
@@ -18,7 +19,7 @@ const CHAVE_TEMA = 'dsp:tema'
  * roda embutido) e, na falta dele, a preferência do sistema.
  */
 function preferenciaInicialEscura(): boolean {
-  const salvo = localStorage.getItem(CHAVE_TEMA)
+  const salvo = lerLocal(CHAVE_TEMA)
   if (salvo) return salvo === 'escuro'
 
   const incorporado = document.documentElement.dataset.theme
@@ -53,7 +54,9 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', temaEscuro)
-    localStorage.setItem(CHAVE_TEMA, temaEscuro ? 'escuro' : 'claro')
+    // Com o armazenamento cheio isto lançava e derrubava o app inteiro
+    // no boundary de erro — logo na primeira renderização.
+    gravarLocal(CHAVE_TEMA, temaEscuro ? 'escuro' : 'claro')
   }, [temaEscuro])
 
   // Link de compartilhamento: #p=<projetoId>&papel=<papel> — abre o

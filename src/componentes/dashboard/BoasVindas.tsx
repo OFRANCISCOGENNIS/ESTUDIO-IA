@@ -6,6 +6,7 @@
 // =============================================================
 
 import { useEffect, useState } from 'react'
+import { gravarLocal, lerLocal } from '../../utilitarios/armazenamento'
 
 const CHAVE = 'dsp:jaVisitou'
 
@@ -22,7 +23,7 @@ const PARTICULAS = [
 export function BoasVindas() {
   const [visivel, setVisivel] = useState(() => {
     try {
-      return localStorage.getItem(CHAVE) !== 'sim'
+      return lerLocal(CHAVE) !== 'sim'
     } catch {
       return false
     }
@@ -32,7 +33,7 @@ export function BoasVindas() {
   useEffect(() => {
     if (!visivel) return
     try {
-      localStorage.setItem(CHAVE, 'sim')
+      gravarLocal(CHAVE, 'sim')
     } catch {
       // Sem armazenamento: mostra desta vez e segue a vida
     }
