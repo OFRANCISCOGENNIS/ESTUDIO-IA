@@ -101,6 +101,11 @@ async function carregarStores() {
   return { editor: useEditorStore, projetos: useProjetosStore }
 }
 
+const textoDe = (projeto: Projeto | null) => {
+  const el = projeto?.paginas[0].elementos.find((e) => e.id === 'txt-1')
+  return el && el.tipo === 'texto' ? el.texto : null
+}
+
 describe('useEditorStore — auto-save', () => {
   beforeEach(() => {
     vi.unstubAllGlobals()
@@ -200,5 +205,46 @@ describe('useEditorStore — agrupamento', () => {
 
     const recarregado = projetos.getState().carregarProjeto('a')
     expect(recarregado?.paginas[0].elementos.every((e) => e.grupoId === undefined)).toBe(true)
+  })
+})
+
+describe('useEditorStore — substituirTexto', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  it('trata a troca como texto literal, mesmo contendo $', async () => {
+    // `String.replace` lê `$&` como "o trecho encontrado". Trocar por
+    // "R$&nbsp;99" produzia "R$consultanbsp;99".
+    vi.useFakeTimers()
+    instalarLocalStorage()
+    const { editor } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+
+    const trocas = editor.getState().substituirTexto('consulta', 'R$&nbsp;99')
+
+    expect(trocas).toBe(1)
+    expect(textoDe(editor.getState().projeto)).toBe('Preço sob R$&nbsp;99')
+  })
+
+  it('conta as ocorrências e ignora maiúsculas', async () => {
+    vi.useFakeTimers()
+    instalarLocalStorage()
+    const { editor } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+
+    expect(editor.getState().substituirTexto('PREÇO', 'Valor')).toBe(1)
+    expect(textoDe(editor.getState().projeto)).toBe('Valor sob consulta')
+  })
+
+  it('não mexe em nada quando não encontra', async () => {
+    vi.useFakeTimers()
+    instalarLocalStorage()
+    const { editor } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+
+    expect(editor.getState().substituirTexto('inexistente', 'x')).toBe(0)
+    expect(textoDe(editor.getState().projeto)).toBe('Preço sob consulta')
   })
 })

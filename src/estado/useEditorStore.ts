@@ -566,7 +566,10 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
           const ocorrencias = el.texto.match(padrao)?.length ?? 0
           if (ocorrencias === 0) return el
           trocas += ocorrencias
-          return { ...el, texto: el.texto.replace(padrao, troca) }
+          // Troca por FUNÇÃO: como string, `$&`, `$\``, `$'` e `$$`
+          // seriam padrões de substituição. Trocar algo por "R$&nbsp;5"
+          // inseria o próprio texto encontrado no lugar do "$&".
+          return { ...el, texto: el.texto.replace(padrao, () => troca) }
         }),
       }))
       if (trocas === 0) return 0
