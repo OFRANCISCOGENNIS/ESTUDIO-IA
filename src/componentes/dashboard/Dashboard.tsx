@@ -17,6 +17,7 @@ import { ResumoProjeto, useProjetosStore } from '../../estado/useProjetosStore'
 import { usePlanoStore } from '../../estado/usePlanoStore'
 import { obterAdaptadorIA } from '../../nucleo/ia/registro'
 import { tempoRelativo } from '../../utilitarios/tempo'
+import { importarProjeto, lerArquivoTexto } from '../../nucleo/importacao'
 
 interface Props {
   temaEscuro: boolean
@@ -68,6 +69,7 @@ const Faisca = ({ className }: IconeProps) => (
 export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
   const resumos = useProjetosStore((s) => s.resumos)
   const criarProjeto = useProjetosStore((s) => s.criarProjeto)
+  const salvarProjeto = useProjetosStore((s) => s.salvarProjeto)
   const carregarProjeto = useProjetosStore((s) => s.carregarProjeto)
   const excluirProjeto = useProjetosStore((s) => s.excluirProjeto)
   const abrirProjeto = useEditorStore((s) => s.abrirProjeto)
@@ -83,6 +85,31 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
   const [larguraCustom, setLarguraCustom] = useState('1080')
   const [alturaCustom, setAlturaCustom] = useState('1080')
   const [contexto, setContexto] = useState<Contexto | 'Todos'>('Todos')
+  const [erroImportacao, setErroImportacao] = useState<string | null>(null)
+
+  /**
+   * Abre um .json baixado do editor. Contrapartida do "Baixar cópia":
+   * sem isto, o arquivo de resgate não teria como voltar.
+   */
+  const aoAbrirArquivo = async (evento: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = evento.target.files?.[0]
+    // Permite reabrir o mesmo arquivo depois de um erro
+    evento.target.value = ''
+    if (!arquivo) return
+
+    setErroImportacao(null)
+    try {
+      const resultado = importarProjeto(await lerArquivoTexto(arquivo))
+      if (!resultado.ok) {
+        setErroImportacao(resultado.erro)
+        return
+      }
+      salvarProjeto(resultado.projeto)
+      abrirProjeto(resultado.projeto)
+    } catch (erro) {
+      setErroImportacao(erro instanceof Error ? erro.message : 'Não foi possível abrir o arquivo.')
+    }
+  }
   const refBusca = useRef<HTMLInputElement>(null)
 
   // Atalho "/" foca a busca central (§9.1) — fora de campos de texto
@@ -403,7 +430,26 @@ export function Dashboard({ temaEscuro, aoAlternarTema }: Props) {
                 />
                 <div className="relative mb-4 flex items-center justify-between gap-3">
                   <h2 className="text-lg font-bold text-superficie-900 dark:text-white">Criar um design</h2>
+                  <label className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-superficie-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-superficie-700 transition-colors duration-micro hover:border-primaria-300 hover:text-primaria-600 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primaria-500 dark:border-superficie-800 dark:bg-superficie-900 dark:text-superficie-200 dark:hover:text-primaria-300">
+                    <span aria-hidden="true">📂</span>
+                    Abrir arquivo
+                    <input
+                      type="file"
+                      accept="application/json,.json"
+                      hidden
+                      onChange={aoAbrirArquivo}
+                    />
+                  </label>
                 </div>
+
+                {erroImportacao && (
+                  <p
+                    role="alert"
+                    className="relative mb-4 rounded-xl2 border border-perigo-400/40 bg-perigo-50 px-3 py-2 text-sm text-perigo-600 dark:bg-perigo-950/50 dark:text-perigo-400"
+                  >
+                    {erroImportacao}
+                  </p>
+                )}
 
                 {/* Chips roláveis que filtram a grade */}
                 <div className="rolagem-fina relative mb-5 flex snap-x gap-2 overflow-x-auto pb-1">
