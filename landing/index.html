@@ -1,0 +1,894 @@
+<title>DesignStudio Pro — o estúdio que roda no navegador</title>
+
+<style>/*FONTES*/</style>
+
+<style>
+/* ============================================================
+   Tokens. A paleta é a do próprio editor: cinza de bancada com
+   viés violeta, prancheta branca, e o magenta #FF3D71 que o
+   canvas usa nas guias de encaixe — aqui reservado só a guias.
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --bancada: #E6E4EE;
+  --papel: #FFFFFF;
+  --tinta: #16131F;
+  --suave: #6B6580;
+  --acento: #7C4DFF;
+  --sobre-acento: #FFFFFF;
+  --guia: #FF3D71;
+  --borda: #D5D2E1;
+  --borda-forte: #C0BCD2;
+  --marca-agua: rgba(22, 19, 31, 0.045);
+  --sombra: 0 1px 2px rgba(22, 19, 31, 0.06), 0 14px 34px -16px rgba(22, 19, 31, 0.28);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bancada: #121019;
+    --papel: #1B1826;
+    --tinta: #ECE9F5;
+    --suave: #9B93B0;
+    --acento: #9E7BFF;
+    --sobre-acento: #14101F;
+    --guia: #FF6C92;
+    --borda: #2E2A3D;
+    --borda-forte: #423C56;
+    --marca-agua: rgba(236, 233, 245, 0.05);
+    --sombra: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+  }
+}
+
+/* O seletor de tema do visualizador precisa vencer a media query
+   nos dois sentidos, então os dois estados são redeclarados. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bancada: #121019;
+  --papel: #1B1826;
+  --tinta: #ECE9F5;
+  --suave: #9B93B0;
+  --acento: #9E7BFF;
+  --sobre-acento: #14101F;
+  --guia: #FF6C92;
+  --borda: #2E2A3D;
+  --borda-forte: #423C56;
+  --marca-agua: rgba(236, 233, 245, 0.05);
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 34px -16px rgba(0, 0, 0, 0.7);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bancada: #E6E4EE;
+  --papel: #FFFFFF;
+  --tinta: #16131F;
+  --suave: #6B6580;
+  --acento: #7C4DFF;
+  --sobre-acento: #FFFFFF;
+  --guia: #FF3D71;
+  --borda: #D5D2E1;
+  --borda-forte: #C0BCD2;
+  --marca-agua: rgba(22, 19, 31, 0.045);
+  --sombra: 0 1px 2px rgba(22, 19, 31, 0.06), 0 14px 34px -16px rgba(22, 19, 31, 0.28);
+}
+
+/* ---------- base ---------- */
+body {
+  margin: 0;
+  background: var(--bancada);
+  color: var(--tinta);
+  font-family: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+a { color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ---------- tipografia ---------- */
+.display {
+  font-family: Anton, "Arial Narrow", sans-serif;
+  font-weight: 400;
+  line-height: 0.93;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+h1.display { font-size: clamp(2.9rem, 8.4vw, 6rem); }
+h2.display { font-size: clamp(1.9rem, 4.4vw, 3.1rem); }
+
+.etiqueta {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--suave);
+  margin: 0;
+}
+
+.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+.prosa {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--suave);
+}
+
+.prosa strong { color: var(--tinta); font-weight: 600; }
+
+/* ---------- estrutura ---------- */
+.folha {
+  width: min(1120px, 100% - 3rem);
+  margin-inline: auto;
+}
+
+@media (max-width: 600px) {
+  .folha { width: min(1120px, 100% - 2rem); }
+}
+
+.pilha {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3.5rem, 8vw, 6.5rem);
+  padding-block: clamp(2rem, 5vw, 3.5rem) clamp(4rem, 9vw, 7rem);
+}
+
+.secao {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.cabeca-secao {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-width: 60ch;
+}
+
+/* Prancheta: o mesmo objeto que o editor põe sobre a bancada.
+   Canto quase reto de propósito — pranchetas não são pílulas. */
+.quadro {
+  background: var(--papel);
+  border: 1px solid var(--borda);
+  border-radius: 3px;
+  box-shadow: var(--sombra);
+  padding: clamp(1.5rem, 3.5vw, 2.25rem);
+}
+
+/* ---------- barra de topo ---------- */
+.topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.marca {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-family: Anton, sans-serif;
+  font-size: 1.15rem;
+  letter-spacing: 0.01em;
+}
+
+.marca span {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  color: var(--suave);
+  text-transform: uppercase;
+}
+
+/* ---------- botões ---------- */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.8rem 1.4rem;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.botao-forte {
+  background: var(--acento);
+  color: var(--sobre-acento);
+}
+
+.botao-forte:hover { transform: translateY(-2px); }
+
+.botao-fraco {
+  background: transparent;
+  color: var(--tinta);
+  border-color: var(--borda-forte);
+}
+
+.botao-fraco:hover { border-color: var(--acento); color: var(--acento); }
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* ============================================================
+   Hero: prancheta viva com alças de seleção e guias de encaixe.
+   ============================================================ */
+.heroi {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
+  padding-block: clamp(1rem, 4vw, 2.5rem);
+}
+
+@media (max-width: 900px) {
+  .heroi { grid-template-columns: minmax(0, 1fr); }
+}
+
+.heroi-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.heroi-texto .prosa { font-size: 1.125rem; }
+
+/* --- a prancheta --- */
+.prancheta {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  max-width: 460px;
+  margin-inline: auto;
+  background: #241B3C;
+  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(22, 19, 31, 0.2), 0 26px 60px -22px rgba(36, 27, 60, 0.75);
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.bolha {
+  position: absolute;
+  right: -14%;
+  bottom: -18%;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #7C4DFF;
+  opacity: 0.92;
+}
+
+.bolha-2 {
+  position: absolute;
+  left: 8%;
+  top: 9%;
+  width: 13%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid #FF3D71;
+  opacity: 0.85;
+}
+
+.arte {
+  position: absolute;
+  inset: 0;
+  padding: 9%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4%;
+}
+
+.arte-titulo {
+  position: relative;
+  font-family: Anton, sans-serif;
+  color: #fff;
+  font-size: 15cqw;
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.arte-regra {
+  height: 3px;
+  width: 34%;
+  background: #FF3D71;
+  transform-origin: left center;
+}
+
+.arte-rodape {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 3.1cqw;
+  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.72);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* alças de seleção do Transformer */
+.selecao {
+  position: absolute;
+  inset: -3.2% -2.4%;
+  border: 1px solid #7C4DFF;
+  pointer-events: none;
+}
+
+.selecao i {
+  position: absolute;
+  width: 2.1cqw;
+  height: 2.1cqw;
+  min-width: 6px;
+  min-height: 6px;
+  background: #fff;
+  border: 1px solid #7C4DFF;
+  border-radius: 1px;
+}
+
+.selecao i:nth-child(1) { left: 0; top: 0; transform: translate(-50%, -50%); }
+.selecao i:nth-child(2) { left: 50%; top: 0; transform: translate(-50%, -50%); }
+.selecao i:nth-child(3) { left: 100%; top: 0; transform: translate(-50%, -50%); }
+.selecao i:nth-child(4) { left: 100%; top: 50%; transform: translate(-50%, -50%); }
+.selecao i:nth-child(5) { left: 100%; top: 100%; transform: translate(-50%, -50%); }
+.selecao i:nth-child(6) { left: 50%; top: 100%; transform: translate(-50%, -50%); }
+.selecao i:nth-child(7) { left: 0; top: 100%; transform: translate(-50%, -50%); }
+.selecao i:nth-child(8) { left: 0; top: 50%; transform: translate(-50%, -50%); }
+
+/* guias de encaixe, com o rótulo numérico que o canvas desenha */
+.guia-v, .guia-h {
+  position: absolute;
+  background: #FF3D71;
+}
+
+.guia-v {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform-origin: top center;
+}
+
+/* Alinhada à borda SUPERIOR do elemento selecionado, que é o que o
+   editor realmente marca — atravessar o título seria desenho, não guia. */
+.guia-h {
+  left: 0;
+  right: 0;
+  top: 50.5%;
+  height: 1px;
+  transform-origin: left center;
+}
+
+.guia-v b, .guia-h b {
+  position: absolute;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 2.6cqw;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  background: #FF3D71;
+  color: #fff;
+  padding: 0.35em 0.6em;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.guia-v b { top: 5%; left: 6px; }
+/* Acima da linha: abaixo dela ficaria por cima do título selecionado. */
+.guia-h b { left: 6px; bottom: 6px; }
+
+/* ---------- sequência de entrada ---------- */
+@keyframes surgir { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes esticar-v { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes esticar-h { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes estalar { from { opacity: 0; transform: translate(-50%, -50%) scale(0.2); } to { opacity: 1; } }
+
+.prancheta .bolha,
+.prancheta .bolha-2,
+.arte-titulo,
+.arte-rodape { animation: surgir 620ms cubic-bezier(.2, .7, .3, 1) both; }
+
+.prancheta .bolha { animation-delay: 80ms; }
+.prancheta .bolha-2 { animation-delay: 180ms; }
+.arte-titulo { animation-delay: 240ms; }
+.arte-rodape { animation-delay: 320ms; }
+.arte-regra { animation: esticar-h 460ms cubic-bezier(.2, .7, .3, 1) 380ms both; }
+.guia-v { animation: esticar-v 520ms cubic-bezier(.2, .7, .3, 1) 520ms both; }
+.guia-h { animation: esticar-h 520ms cubic-bezier(.2, .7, .3, 1) 600ms both; }
+.selecao i { animation: estalar 260ms cubic-bezier(.2, .7, .3, 1) 700ms both; }
+
+/* ============================================================
+   Grades de conteúdo
+   ============================================================ */
+.trio {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.25rem;
+}
+
+.trio h3, .recurso h3 {
+  font-family: "Work Sans", sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--tinta);
+}
+
+.trio .quadro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.trio p { margin: 0; color: var(--suave); font-size: 0.9375rem; }
+
+.recursos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 1.25rem;
+}
+
+.recurso {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.recurso p { margin: 0; color: var(--suave); font-size: 0.9375rem; }
+
+/* ---------- formatos ---------- */
+.formatos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 0.6rem;
+}
+
+/* Nome sobre medida: lado a lado, nomes longos quebravam em duas
+   linhas e desalinhavam a coluna de dimensões. */
+.formato {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.9rem;
+  background: var(--papel);
+  border: 1px solid var(--borda);
+  border-radius: 2px;
+  transition: border-color 120ms ease;
+}
+
+.formato:hover { border-color: var(--acento); }
+
+.formato span { font-size: 0.9375rem; font-weight: 500; }
+
+.formato em {
+  font-family: "IBM Plex Mono", monospace;
+  font-style: normal;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--suave);
+  white-space: nowrap;
+}
+
+.grupo-formatos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* ---------- atalhos ---------- */
+.atalhos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
+  gap: 0 2.5rem;
+}
+
+.atalho {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--borda);
+}
+
+.atalho p { margin: 0; font-size: 0.9375rem; color: var(--suave); }
+
+kbd {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--tinta);
+  background: var(--bancada);
+  border: 1px solid var(--borda-forte);
+  border-radius: 2px;
+  padding: 0.2em 0.5em;
+  white-space: nowrap;
+}
+
+/* ---------- limites ---------- */
+.limites {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.limite {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 0.4rem 2rem;
+  padding: 1.15rem 0;
+  border-top: 1px solid var(--borda);
+}
+
+.limite:last-child { border-bottom: 1px solid var(--borda); }
+
+@media (max-width: 700px) {
+  .limite { grid-template-columns: minmax(0, 1fr); }
+}
+
+.limite h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.limite p { margin: 0; color: var(--suave); font-size: 0.9375rem; }
+
+/* ---------- régua: a guia usada como divisor de seção ---------- */
+.regua {
+  position: relative;
+  height: 1px;
+  background: var(--guia);
+  margin-bottom: 0.5rem;
+}
+
+.regua b {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  background: var(--guia);
+  color: #fff;
+  padding: 0.25em 0.55em;
+  border-radius: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- chamada final ---------- */
+.final {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: clamp(2.25rem, 6vw, 4rem);
+  overflow: hidden;
+}
+
+.final::after {
+  content: "1080";
+  position: absolute;
+  right: clamp(1rem, 3vw, 2rem);
+  bottom: clamp(0.5rem, 2vw, 1rem);
+  font-family: Anton, sans-serif;
+  font-size: clamp(4rem, 15vw, 11rem);
+  line-height: 1;
+  color: var(--marca-agua);
+  pointer-events: none;
+  user-select: none;
+}
+
+.final > * { position: relative; z-index: 1; }
+
+.rodape {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+  justify-content: space-between;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--borda);
+  color: var(--suave);
+  font-size: 0.8125rem;
+}
+
+.rodape p { margin: 0; max-width: 58ch; }
+
+@media (prefers-reduced-motion: reduce) {
+  .prancheta .bolha,
+  .prancheta .bolha-2,
+  .arte-titulo,
+  .arte-rodape,
+  .arte-regra,
+  .guia-v,
+  .guia-h,
+  .selecao i {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .selecao i:nth-child(1) { transform: translate(-50%, -50%); }
+  .selecao i:nth-child(2) { transform: translate(-50%, -50%); }
+  .selecao i:nth-child(3) { transform: translate(-50%, -50%); }
+  .selecao i:nth-child(4) { transform: translate(-50%, -50%); }
+  .selecao i:nth-child(5) { transform: translate(-50%, -50%); }
+  .selecao i:nth-child(6) { transform: translate(-50%, -50%); }
+  .selecao i:nth-child(7) { transform: translate(-50%, -50%); }
+  .selecao i:nth-child(8) { transform: translate(-50%, -50%); }
+  .botao { transition: none; }
+  .botao-forte:hover { transform: none; }
+}
+</style>
+
+<div class="folha pilha">
+
+  <header class="topo">
+    <div class="marca">DesignStudio Pro <span>Editor</span></div>
+    <a class="botao botao-fraco" href="https://claude.ai/code/artifact/39540f2a-5928-4877-9eea-7782f8b28f94">Abrir o editor</a>
+  </header>
+
+  <section class="heroi">
+    <div class="heroi-texto">
+      <p class="etiqueta">Editor de design · roda inteiro no navegador</p>
+      <h1 class="display">Seu estúdio inteiro cabe numa aba.</h1>
+      <p class="prosa">
+        Canvas com camadas, 17 templates, modo apresentação e exportação em seis
+        formatos. <strong>Sem conta, sem upload, sem servidor</strong> — os projetos
+        ficam no armazenamento do seu próprio navegador.
+      </p>
+      <div class="acoes">
+        <a class="botao botao-forte" href="https://claude.ai/code/artifact/39540f2a-5928-4877-9eea-7782f8b28f94">Abrir o editor</a>
+        <a class="botao botao-fraco" href="#dentro">O que tem dentro</a>
+      </div>
+    </div>
+
+    <div class="prancheta" role="img" aria-label="Prancheta do editor com um cartaz em edição: o título está selecionado, com alças de redimensionamento e guias de encaixe magenta marcando o centro do canvas.">
+      <div class="bolha"></div>
+      <div class="bolha-2"></div>
+      <div class="guia-v" aria-hidden="true"><b>540</b></div>
+      <div class="guia-h" aria-hidden="true"><b>312</b></div>
+      <div class="arte">
+        <h2 class="arte-titulo">
+          Nova<br />coleção
+          <span class="selecao" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </span>
+        </h2>
+        <div class="arte-regra"></div>
+        <p class="arte-rodape">Outono 2026</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="cabeca-secao">
+      <p class="etiqueta">Arquivos</p>
+      <h2 class="display">Nada sobe para lugar nenhum.</h2>
+    </div>
+    <div class="trio">
+      <div class="quadro">
+        <h3>Fica no seu navegador</h3>
+        <p>
+          Cada projeto é gravado no armazenamento local da máquina. Não existe conta
+          para criar nem servidor para receber — porque não existe servidor.
+        </p>
+      </div>
+      <div class="quadro">
+        <h3>Funciona sem internet</h3>
+        <p>
+          As oito famílias de fonte, os ícones e os templates vêm embutidos. Depois
+          que a página carrega, dá para trabalhar com a rede desligada.
+        </p>
+      </div>
+      <div class="quadro">
+        <h3>O arquivo é seu</h3>
+        <p>
+          Baixe o projeto inteiro como <span class="mono">.json</span> e abra de volta
+          quando quiser, em qualquer máquina. Sem exportação amarrada a plano.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao" id="dentro">
+    <div class="cabeca-secao">
+      <p class="etiqueta">O que tem dentro</p>
+      <h2 class="display">Um editor completo, não uma demonstração.</h2>
+    </div>
+    <div class="recursos">
+      <div class="quadro recurso">
+        <p class="etiqueta">Canvas</p>
+        <h3>Desenho e composição</h3>
+        <p>
+          Formas, texto, imagem, linha, caneta bézier, gráficos e tabelas. Guias
+          inteligentes que encaixam nas bordas e no centro, grade opcional, agrupar,
+          alinhar e distribuir. Camadas com ordem Z e cem passos de desfazer.
+        </p>
+      </div>
+      <div class="quadro recurso">
+        <p class="etiqueta">Texto</p>
+        <h3>Tipografia com efeito</h3>
+        <p>
+          Oito famílias embutidas, efeitos de sombra, contorno, neon e eco, e texturas
+          de dourado, prata, metal, fogo e gelo. Altura de linha, espaçamento entre
+          letras e alinhamento, tudo editável direto no canvas.
+        </p>
+      </div>
+      <div class="quadro recurso">
+        <p class="etiqueta">Imagem</p>
+        <h3>Ajuste e recorte</h3>
+        <p>
+          Brilho, contraste, saturação, temperatura, nitidez, desfoque e vinheta.
+          Máscaras de círculo, arredondado, triângulo, estrela e coração. Remoção de
+          fundo por preenchimento a partir das bordas.
+        </p>
+      </div>
+      <div class="quadro recurso">
+        <p class="etiqueta">Páginas</p>
+        <h3>Do post ao deck</h3>
+        <p>
+          Várias páginas por projeto, com notas do apresentador, transições de slide e
+          animações de entrada por elemento. Modo apresentação em tela cheia, sem sair
+          do editor.
+        </p>
+      </div>
+      <div class="quadro recurso">
+        <p class="etiqueta">Assistente local</p>
+        <h3>Sem chave de API</h3>
+        <p>
+          Descreva o que quer e receba quatro layouts editáveis. Textos gerados por
+          tom, paleta extraída da própria imagem por quantização de cores e
+          redimensionamento mágico entre formatos — tudo calculado no navegador.
+        </p>
+      </div>
+      <div class="quadro recurso">
+        <p class="etiqueta">Exportação</p>
+        <h3>Seis saídas</h3>
+        <p>
+          PNG e JPG em 1×, 2× ou 3×, SVG vetorial, PDF, PPTX e um ZIP com todas as
+          páginas. Mais um verificador de contraste WCAG e um gerador de QR code.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="regua" aria-hidden="true"><b>1080 × 1080</b></div>
+    <div class="cabeca-secao">
+      <p class="etiqueta">Formatos</p>
+      <h2 class="display">Doze tamanhos prontos.</h2>
+      <p class="prosa">
+        E o redimensionamento mágico recompõe o design de um para o outro, gerando
+        cópias em vez de sobrescrever o original.
+      </p>
+    </div>
+
+    <div class="grupo-formatos">
+      <p class="etiqueta">Social</p>
+      <div class="formatos">
+        <div class="formato"><span>Post Instagram</span><em>1080 × 1080</em></div>
+        <div class="formato"><span>Story</span><em>1080 × 1920</em></div>
+        <div class="formato"><span>Thumbnail YouTube</span><em>1280 × 720</em></div>
+        <div class="formato"><span>Post LinkedIn</span><em>1200 × 627</em></div>
+      </div>
+    </div>
+
+    <div class="grupo-formatos">
+      <p class="etiqueta">Impressão</p>
+      <div class="formatos">
+        <div class="formato"><span>Cartão de visita</span><em>1050 × 600</em></div>
+        <div class="formato"><span>Documento A4</span><em>2480 × 3508</em></div>
+        <div class="formato"><span>Flyer A5</span><em>1748 × 2480</em></div>
+        <div class="formato"><span>Capa de e-book</span><em>1600 × 2560</em></div>
+      </div>
+    </div>
+
+    <div class="grupo-formatos">
+      <p class="etiqueta">Apresentação e web</p>
+      <div class="formatos">
+        <div class="formato"><span>Apresentação</span><em>1920 × 1080</em></div>
+        <div class="formato"><span>Slide 4:3</span><em>1024 × 768</em></div>
+        <div class="formato"><span>Logo</span><em>500 × 500</em></div>
+        <div class="formato"><span>Banner web</span><em>1920 × 600</em></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="cabeca-secao">
+      <p class="etiqueta">Atalhos</p>
+      <h2 class="display">Feito para quem não solta o teclado.</h2>
+    </div>
+    <div class="quadro">
+      <div class="atalhos">
+        <div class="atalho"><p>Paleta de comandos</p><kbd>Ctrl K</kbd></div>
+        <div class="atalho"><p>Localizar e substituir</p><kbd>Ctrl F</kbd></div>
+        <div class="atalho"><p>Desfazer / refazer</p><kbd>Ctrl Z</kbd></div>
+        <div class="atalho"><p>Agrupar / desagrupar</p><kbd>Ctrl G</kbd></div>
+        <div class="atalho"><p>Duplicar seleção</p><kbd>Ctrl D</kbd></div>
+        <div class="atalho"><p>Salvar agora</p><kbd>Ctrl S</kbd></div>
+        <div class="atalho"><p>Editar o texto selecionado</p><kbd>Enter</kbd></div>
+        <div class="atalho"><p>Mover 1 px / 10 px</p><kbd>← ↑ ↓ →</kbd></div>
+        <div class="atalho"><p>Ferramentas: seleção, texto, retângulo</p><kbd>V T R</kbd></div>
+        <div class="atalho"><p>Ver todos os atalhos</p><kbd>?</kbd></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="cabeca-secao">
+      <p class="etiqueta">Limites</p>
+      <h2 class="display">O que ele ainda não faz.</h2>
+      <p class="prosa">
+        Rodar sem servidor tem um preço, e é mais honesto dizer qual antes de você
+        abrir o editor.
+      </p>
+    </div>
+    <div class="limites">
+      <div class="limite">
+        <h3>Colaboração só entre abas</h3>
+        <p>
+          Cursores ao vivo, comentários fixados e papéis de permissão funcionam — mas o
+          transporte é o <span class="mono">BroadcastChannel</span> do navegador. Duas
+          abas da mesma máquina conversam; dois dispositivos, não.
+        </p>
+      </div>
+      <div class="limite">
+        <h3>O espaço é o do navegador</h3>
+        <p>
+          Projetos com muitas fotos podem encher a cota do armazenamento local. Quando
+          isso acontece o editor avisa na hora e oferece baixar uma cópia, em vez de
+          deixar o trabalho sumir em silêncio.
+        </p>
+      </div>
+      <div class="limite">
+        <h3>Sem contas nem sincronização</h3>
+        <p>
+          Não há login, então não há nada para recuperar do outro lado. Trocar de
+          máquina significa levar o <span class="mono">.json</span> junto.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="quadro final">
+    <p class="etiqueta">Comece por uma prancheta em branco</p>
+    <h2 class="display">Abra e desenhe.</h2>
+    <p class="prosa">
+      Nenhum cadastro, nenhuma tela de plano no caminho. O editor carrega direto num
+      canvas vazio de 1080 × 1080.
+    </p>
+    <a class="botao botao-forte" href="https://claude.ai/code/artifact/39540f2a-5928-4877-9eea-7782f8b28f94">Abrir o editor</a>
+  </section>
+
+  <footer class="rodape">
+    <p>
+      DesignStudio Pro — React, Konva e TypeScript, empacotados em um único arquivo
+      que não faz nenhuma requisição externa.
+    </p>
+    <p class="mono">Esquema de projeto v5</p>
+  </footer>
+
+</div>

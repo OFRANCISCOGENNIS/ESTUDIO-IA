@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "site": "vite build --config vite.config.site.ts && node scripts/baixar-fontes.mjs dist-site/fontes.css && node scripts/gerar-site.mjs"
+    "site": "vite build --config vite.config.site.ts && node scripts/baixar-fontes.mjs dist-site/fontes.css && node scripts/gerar-site.mjs",
+    "landing": "node scripts/gerar-landing.mjs"
   },
   "dependencies": {
     "konva": "^9.3.14",
