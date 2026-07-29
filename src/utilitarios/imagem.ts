@@ -5,6 +5,8 @@
 // um canvas offscreen; o resultado é um data URL pronto para uso.
 // =============================================================
 
+import { comprimirAteCaber, FormatoImagem } from '../nucleo/compressaoImagem'
+
 /** Dimensão máxima (px) após compressão de uploads */
 const DIMENSAO_MAXIMA = 1600
 
@@ -46,20 +48,35 @@ export function comprimirImagem(
   imagem: HTMLImageElement,
   preservaTransparencia: boolean,
 ): ImagemCarregada {
-  const escala = Math.min(1, DIMENSAO_MAXIMA / Math.max(imagem.width, imagem.height))
-  const largura = Math.round(imagem.width * escala)
-  const altura = Math.round(imagem.height * escala)
+  const escalaBase = Math.min(1, DIMENSAO_MAXIMA / Math.max(imagem.width, imagem.height))
 
   const canvas = document.createElement('canvas')
-  canvas.width = largura
-  canvas.height = altura
   const ctx = canvas.getContext('2d')
   if (!ctx) {
     return { url: imagem.src, largura: imagem.width, altura: imagem.height }
   }
-  ctx.drawImage(imagem, 0, 0, largura, altura)
-  const url = preservaTransparencia
-    ? canvas.toDataURL('image/png')
-    : canvas.toDataURL('image/jpeg', 0.85)
+
+  // Dimensões da última codificação — a que vale é a que couber no teto.
+  let largura = 0
+  let altura = 0
+
+  const codificar = (fator: number, formato: FormatoImagem) => {
+    const escala = escalaBase * fator
+    largura = Math.max(1, Math.round(imagem.width * escala))
+    altura = Math.max(1, Math.round(imagem.height * escala))
+    canvas.width = largura
+    canvas.height = altura
+    // JPEG não tem alfa: sem um fundo branco, o transparente vira preto.
+    if (formato === 'jpeg') {
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, largura, altura)
+    } else {
+      ctx.clearRect(0, 0, largura, altura)
+    }
+    ctx.drawImage(imagem, 0, 0, largura, altura)
+    return formato === 'png' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.85)
+  }
+
+  const { url } = comprimirAteCaber(codificar, preservaTransparencia)
   return { url, largura, altura }
 }
