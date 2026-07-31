@@ -15,6 +15,7 @@ import { TEMAS_COR } from '../../dados/temas'
 import { PARES_FONTES, ParFonte } from '../../dados/fontes'
 import { FOTOS, ICONES, ItemGaleria, STICKERS } from '../../dados/galeria'
 import { carregarArquivoImagem, ImagemCarregada } from '../../utilitarios/imagem'
+import { dimensionarParaCanvas } from '../../nucleo/insercaoImagem'
 import { PainelIA } from './PainelIA'
 import { PainelMarca } from './PainelMarca'
 import { PainelColab } from './PainelColab'
@@ -164,8 +165,14 @@ export function BarraFerramentas() {
   }
 
   const inserirImagemCarregada = (img: ImagemCarregada) => {
+    // A compressão devolve até 1600 px; inserir nesse tamanho fazia a
+    // foto nascer maior que um artboard de 1080 e sair pelas bordas.
+    const { largura, altura } = dimensionarParaCanvas(img, {
+      largura: projeto.larguraCanvas,
+      altura: projeto.alturaCanvas,
+    })
     adicionarElemento(
-      criarImagem(img.url, centrarX(img.largura), centrarY(img.altura), img.largura, img.altura),
+      criarImagem(img.url, centrarX(largura), centrarY(altura), largura, altura),
     )
   }
 
@@ -596,6 +603,11 @@ export function BarraFerramentas() {
                 onChange={aoSelecionarArquivos}
               />
             </label>
+
+            <p className="text-xs text-superficie-600 dark:text-superficie-400">
+              Você também pode arrastar imagens direto para o canvas, ou colar
+              um print com <kbd className="rounded border border-superficie-300 px-1 font-medium dark:border-superficie-700">Ctrl+V</kbd>.
+            </p>
 
             {uploads.length === 0 ? (
               <p className="text-xs text-superficie-700 dark:text-superficie-300">

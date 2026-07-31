@@ -16,10 +16,20 @@ import { Group, Layer, Line, Rect, Stage, Transformer } from 'react-konva'
 import {
   criarCaminho,
   criarForma,
+  criarImagem,
   criarLinha,
   criarTexto,
 } from '../../nucleo/elementos'
 import { mimeDoFormato, registrarExportador } from '../../nucleo/exportacao'
+import {
+  cascata,
+  dimensionarParaCanvas,
+  nomeDeArquivo,
+  Ponto,
+  posicionarEm,
+  separarImagens,
+} from '../../nucleo/insercaoImagem'
+import { carregarArquivoImagem } from '../../utilitarios/imagem'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 import { useColabStore } from '../../estado/useColabStore'
@@ -127,6 +137,8 @@ export function CanvasEditor() {
   const [canetaMouse, setCanetaMouse] = useState<{ x: number; y: number } | null>(null)
   const [lapis, setLapis] = useState<{ x: number; y: number }[] | null>(null)
   const [menuCtx, setMenuCtx] = useState<{ x: number; y: number } | null>(null)
+  const [arrastandoArquivo, setArrastandoArquivo] = useState(false)
+  const [avisoArquivo, setAvisoArquivo] = useState<string | null>(null)
   const idAjustado = useRef<string | null>(null)
   const encaixeTratado = useRef(0)
   // Posições iniciais da seleção no início de um arraste (grupo/multi-drag)
@@ -354,6 +366,14 @@ export function CanvasEditor() {
     window.addEventListener('keydown', aoTeclar)
     return () => window.removeEventListener('keydown', aoTeclar)
   }, [modoCaneta, finalizarCaneta])
+
+  // O aviso de arquivo recusado some sozinho; quem quiser ler com calma
+  // tem o botão Fechar.
+  useEffect(() => {
+    if (!avisoArquivo) return
+    const t = setTimeout(() => setAvisoArquivo(null), 6000)
+    return () => clearTimeout(t)
+  }, [avisoArquivo])
 
   if (!projeto || !pagina) return null
 
@@ -660,6 +680,71 @@ export function CanvasEditor() {
     }
   }
 
+  // ---- Soltar arquivos de imagem sobre o canvas ----
+  /** Ponto do artboard sob o cursor do evento de arraste */
+  const pontoDoEvento = (e: React.DragEvent): Ponto => {
+    const caixa = containerRef.current?.getBoundingClientRect()
+    if (!caixa) return { x: projeto.larguraCanvas / 2, y: projeto.alturaCanvas / 2 }
+    return {
+      x: (e.clientX - caixa.left - deslocamento.x) / zoom,
+      y: (e.clientY - caixa.top - deslocamento.y) / zoom,
+    }
+  }
+
+  const aoArrastarSobre = (e: React.DragEvent) => {
+    if (!podeEditar || !e.dataTransfer.types.includes('Files')) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setArrastandoArquivo(true)
+  }
+
+  // O dragleave dispara também ao passar sobre filhos; só interessa a
+  // saída do contêiner inteiro.
+  const aoSairArrasto = (e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setArrastandoArquivo(false)
+  }
+
+  const aoSoltarArquivos = async (e: React.DragEvent) => {
+    if (!podeEditar) return
+    e.preventDefault()
+    setArrastandoArquivo(false)
+    const { imagens, ignorados } = separarImagens([...e.dataTransfer.files])
+    if (ignorados.length > 0) {
+      setAvisoArquivo(
+        ignorados.length === 1
+          ? `"${ignorados[0]}" não é uma imagem.`
+          : `${ignorados.length} arquivos não são imagens e ficaram de fora.`,
+      )
+    }
+    if (imagens.length === 0) return
+    await inserirImagens(imagens, pontoDoEvento(e))
+  }
+
+  /** Carrega, dimensiona e insere um lote de imagens a partir de um ponto */
+  const inserirImagens = async (arquivos: File[], alvo: Ponto) => {
+    const canvas = { largura: projeto.larguraCanvas, altura: projeto.alturaCanvas }
+    for (const [i, arquivo] of arquivos.entries()) {
+      try {
+        const img = await carregarArquivoImagem(arquivo)
+        const dim = dimensionarParaCanvas(img, canvas)
+        const desvio = cascata(i)
+        const pos = posicionarEm(dim, { x: alvo.x + desvio.x, y: alvo.y + desvio.y }, canvas)
+        adicionarElemento(
+          criarImagem(img.url, pos.x, pos.y, dim.largura, dim.altura, {
+            nome: nomeDeArquivo(arquivo.name),
+          }),
+        )
+      } catch (erro) {
+        setAvisoArquivo(
+          `Não foi possível abrir "${arquivo.name}": ${
+            erro instanceof Error ? erro.message : 'arquivo inválido'
+          }`,
+        )
+      }
+    }
+  }
+
   const cursor = modoComentario || modoCaneta || modoLapis
     ? 'crosshair'
     : modoPan
@@ -695,6 +780,9 @@ export function CanvasEditor() {
       className="relative h-full w-full overflow-hidden bg-superficie-100 dark:bg-superficie-950"
       style={{ cursor }}
       onContextMenu={aoAbrirMenuContexto}
+      onDragOver={aoArrastarSobre}
+      onDragLeave={aoSairArrasto}
+      onDrop={aoSoltarArquivos}
     >
       <Stage
         ref={stageRef}
@@ -894,6 +982,32 @@ export function CanvasEditor() {
 
       {/* Sobreposição de colaboração: cursores e comentários */}
       <CamadaColab />
+
+      {/* Alvo de soltar arquivos. `pointer-events-none` é essencial:
+          sem isso a própria sobreposição roubaria o dragleave e o drop. */}
+      {arrastandoArquivo && (
+        <div className="pointer-events-none absolute inset-3 z-30 flex items-center justify-center rounded-xl2 border-2 border-dashed border-primaria-500 bg-primaria-500/10">
+          <p className="rounded-lg bg-primaria-500 px-4 py-2 text-sm font-semibold text-white shadow-flutuante">
+            Solte para inserir no design
+          </p>
+        </div>
+      )}
+
+      {avisoArquivo && (
+        <div
+          role="status"
+          className="absolute bottom-4 left-1/2 z-30 flex max-w-[min(28rem,90%)] -translate-x-1/2 items-center gap-3 rounded-lg border border-perigo-400 bg-white px-3 py-2 text-sm text-perigo-600 shadow-flutuante dark:bg-superficie-900 dark:text-perigo-400"
+        >
+          <span className="min-w-0 flex-1">{avisoArquivo}</span>
+          <button
+            type="button"
+            onClick={() => setAvisoArquivo(null)}
+            className="shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold text-superficie-600 transition-colors duration-micro hover:bg-superficie-100 dark:text-superficie-300 dark:hover:bg-superficie-800"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
 
       {/* Menu de contexto (clique direito) */}
       {menuCtx && (

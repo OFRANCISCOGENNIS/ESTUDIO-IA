@@ -63,8 +63,9 @@ export function useAtalhosTeclado() {
           case 'c':
             estado.copiarSelecionados()
             return
+          // Ctrl+V não é tratado aqui: só o evento `paste` enxerga a
+          // área de transferência do sistema (ver hooks/usaColagem).
           case 'v':
-            estado.colar()
             return
           case 'd':
             e.preventDefault()

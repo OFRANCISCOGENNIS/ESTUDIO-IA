@@ -5,6 +5,7 @@
 // =============================================================
 
 import { useAtalhosTeclado } from '../../hooks/useAtalhosTeclado'
+import { usaBloqueioSolturaFora, usaColagem } from '../../hooks/usaColagem'
 import { usaTelaCompacta } from '../../hooks/usaTelaCompacta'
 import { useSincronizacaoColab } from '../../hooks/useSincronizacaoColab'
 import { useEditorStore } from '../../estado/useEditorStore'
@@ -31,6 +32,8 @@ interface Props {
 
 export function Editor({ temaEscuro, aoAlternarTema }: Props) {
   useAtalhosTeclado()
+  usaColagem()
+  usaBloqueioSolturaFora()
   useSincronizacaoColab()
   const apresentando = useEditorStore((s) => s.apresentando)
   const papel = useColabStore((s) => s.papel)
