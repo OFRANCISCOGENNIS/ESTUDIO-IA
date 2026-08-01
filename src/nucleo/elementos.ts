@@ -227,7 +227,33 @@ export function criarTabela(
   }
 }
 
-/** Clona um elemento com novo id e deslocamento (usado em duplicar/colar) */
+/**
+ * Clona uma seleção inteira preservando os grupos que existem DENTRO
+ * dela: duas cópias que estavam juntas continuam juntas, mas num grupo
+ * novo — antes entravam no grupo original, e mover o original passava
+ * a arrastar as cópias junto.
+ *
+ * Copiar um elemento solto de um grupo tira o vínculo: grupo de um não
+ * é grupo.
+ */
+export function clonarElementos(elementos: Elemento[], deslocamento = 16): Elemento[] {
+  const porGrupo = new Map<string, number>()
+  for (const el of elementos) {
+    if (el.grupoId) porGrupo.set(el.grupoId, (porGrupo.get(el.grupoId) ?? 0) + 1)
+  }
+  const renomeados = new Map<string, string>()
+  for (const [id, quantos] of porGrupo) {
+    if (quantos >= 2) renomeados.set(id, nanoid(8))
+  }
+
+  return elementos.map((el) => ({
+    ...clonarElemento(el, deslocamento),
+    grupoId: el.grupoId ? renomeados.get(el.grupoId) : undefined,
+  }))
+}
+
+/** Clona um elemento com novo id e deslocamento. Para duplicar uma
+ *  seleção use `clonarElementos`, que também acerta os grupos. */
 export function clonarElemento(elemento: Elemento, deslocamento = 16): Elemento {
   return {
     ...structuredClone(elemento),

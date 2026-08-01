@@ -358,3 +358,45 @@ describe('useEditorStore — alinhar e distribuir', () => {
     expect(posicao(editor, 'ret-2').x).toBeCloseTo(450, 6)
   })
 })
+
+describe('useEditorStore — duplicar grupo', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  it('as cópias formam um grupo novo, não entram no original', async () => {
+    vi.useFakeTimers()
+    instalarLocalStorage()
+    const { editor } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+    editor.getState().selecionar(['txt-1', 'ret-1'])
+    editor.getState().agruparSelecionados()
+    const grupoOriginal = editor.getState().projeto?.paginas[0].elementos[0].grupoId
+
+    editor.getState().duplicarSelecionados()
+
+    const els = editor.getState().projeto?.paginas[0].elementos ?? []
+    expect(els).toHaveLength(4)
+    const copias = els.slice(2)
+    expect(copias[0].grupoId).toBeTruthy()
+    expect(copias[0].grupoId).toBe(copias[1].grupoId)
+    // O ponto do bug: antes as cópias herdavam o grupo do original
+    expect(copias[0].grupoId).not.toBe(grupoOriginal)
+  })
+
+  it('copiar um elemento solto de um grupo desfaz o vínculo', async () => {
+    vi.useFakeTimers()
+    instalarLocalStorage()
+    const { editor } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+    editor.getState().selecionar(['txt-1', 'ret-1'])
+    editor.getState().agruparSelecionados()
+
+    editor.getState().selecionar(['txt-1'])
+    editor.getState().duplicarSelecionados()
+
+    const els = editor.getState().projeto?.paginas[0].elementos ?? []
+    expect(els[els.length - 1].grupoId).toBeUndefined()
+  })
+})

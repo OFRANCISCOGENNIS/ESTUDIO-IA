@@ -10,7 +10,7 @@ import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import { Historico } from '../nucleo/historico'
 import { desserializarComBanco, limparBanco, serializarComBanco } from '../nucleo/bancoImagens'
-import { clonarElemento } from '../nucleo/elementos'
+import { clonarElementos } from '../nucleo/elementos'
 import { recolorirDesign } from '../nucleo/recolorir'
 import { redimensionarElementos } from '../nucleo/ia/redimensionar'
 import { caixaDe, deslocamentoPara } from '../nucleo/geometria'
@@ -364,9 +364,9 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
     duplicarSelecionados: () => {
       const { selecionados } = get()
       if (selecionados.length === 0) return
-      const copias = elementosAtivos()
-        .filter((elemento) => selecionados.includes(elemento.id))
-        .map((elemento) => clonarElemento(elemento))
+      const copias = clonarElementos(
+        elementosAtivos().filter((elemento) => selecionados.includes(elemento.id)),
+      )
       get().aplicarAlteracao((atual) => ({
         ...atual,
         elementos: [...atual.elementos, ...copias],
@@ -383,7 +383,7 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
 
     colar: () => {
       if (areaTransferencia.length === 0) return
-      const copias = areaTransferencia.map((elemento) => clonarElemento(elemento))
+      const copias = clonarElementos(areaTransferencia)
       get().aplicarAlteracao((atual) => ({
         ...atual,
         elementos: [...atual.elementos, ...copias],
