@@ -13,6 +13,7 @@ import { desserializarComBanco, limparBanco, serializarComBanco } from '../nucle
 import { clonarElemento } from '../nucleo/elementos'
 import { recolorirDesign } from '../nucleo/recolorir'
 import { redimensionarElementos } from '../nucleo/ia/redimensionar'
+import { caixaDe, deslocamentoPara } from '../nucleo/geometria'
 import { exportarDataUrl } from '../nucleo/exportacao'
 import { debounce } from '../utilitarios/tempo'
 import { Comentario, Elemento, Ferramenta, Pagina, Projeto } from '../tipos/projeto'
@@ -168,21 +169,6 @@ function clonarElementosParaPagina(elementos: Elemento[]): Elemento[] {
   return elementos.map((el) => ({ ...structuredClone(el), id: nanoid(10) }))
 }
 
-/** Dimensões dos elementos para alinhamento */
-function dimensoesDe(elemento: Elemento): { largura: number; altura: number } {
-  if (elemento.tipo === 'linha' || elemento.tipo === 'caminho') {
-    const xs = elemento.pontos.filter((_, i) => i % 2 === 0)
-    const ys = elemento.pontos.filter((_, i) => i % 2 === 1)
-    return {
-      largura: Math.max(...xs) - Math.min(...xs),
-      altura: Math.max(...ys) - Math.min(...ys),
-    }
-  }
-  if (elemento.tipo === 'texto') {
-    return { largura: elemento.largura, altura: elemento.tamanhoFonte * elemento.alturaLinha }
-  }
-  return { largura: elemento.largura, altura: elemento.altura }
-}
 
 export const useEditorStore = create<EstadoEditor>((set, get) => {
   // ---- Auto-save com debounce de 2s e miniatura para o dashboard ----
@@ -449,25 +435,30 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
       const { projeto, selecionados } = get()
       if (!projeto || selecionados.length === 0) return
       const { larguraCanvas, alturaCanvas } = projeto
+      // Cada eixo vira "encoste esta borda da CAIXA neste alvo". Mexer
+      // direto em x/y só acertava quando caixa e origem coincidiam —
+      // ou seja, nunca em texto de várias linhas, linha ou elemento
+      // girado.
+      const regras: Record<
+        typeof eixo,
+        { eixo: 'x' | 'y'; borda: 'inicio' | 'centro' | 'fim'; alvo: number }
+      > = {
+        esquerda: { eixo: 'x', borda: 'inicio', alvo: 0 },
+        centroH: { eixo: 'x', borda: 'centro', alvo: larguraCanvas / 2 },
+        direita: { eixo: 'x', borda: 'fim', alvo: larguraCanvas },
+        topo: { eixo: 'y', borda: 'inicio', alvo: 0 },
+        centroV: { eixo: 'y', borda: 'centro', alvo: alturaCanvas / 2 },
+        base: { eixo: 'y', borda: 'fim', alvo: alturaCanvas },
+      }
+      const regra = regras[eixo]
       get().aplicarAlteracao((atual) => ({
         ...atual,
         elementos: atual.elementos.map((elemento) => {
           if (!selecionados.includes(elemento.id) || elemento.bloqueado) return elemento
-          const { largura, altura } = dimensoesDe(elemento)
-          switch (eixo) {
-            case 'esquerda':
-              return { ...elemento, x: 0 }
-            case 'centroH':
-              return { ...elemento, x: (larguraCanvas - largura) / 2 }
-            case 'direita':
-              return { ...elemento, x: larguraCanvas - largura }
-            case 'topo':
-              return { ...elemento, y: 0 }
-            case 'centroV':
-              return { ...elemento, y: (alturaCanvas - altura) / 2 }
-            case 'base':
-              return { ...elemento, y: alturaCanvas - altura }
-          }
+          const delta = deslocamentoPara(caixaDe(elemento), regra.eixo, regra.borda, regra.alvo)
+          return regra.eixo === 'x'
+            ? { ...elemento, x: elemento.x + delta }
+            : { ...elemento, y: elemento.y + delta }
         }),
       }))
     },
@@ -479,27 +470,34 @@ export const useEditorStore = create<EstadoEditor>((set, get) => {
       )
       if (alvos.length < 3) return
       const chave = eixo === 'horizontal' ? 'x' : 'y'
+      // Espaçamento é sobre as CAIXAS; a origem só é usada no fim,
+      // para converter a posição desejada em deslocamento.
+      const caixas = new Map(alvos.map((el) => [el.id, caixaDe(el)]))
+      const inicioDe = (el: Elemento) => (eixo === 'horizontal' ? caixas.get(el.id)!.x : caixas.get(el.id)!.y)
       const medida = (el: Elemento) =>
-        eixo === 'horizontal' ? dimensoesDe(el).largura : dimensoesDe(el).altura
+        eixo === 'horizontal' ? caixas.get(el.id)!.largura : caixas.get(el.id)!.altura
+
       // Ordena pelo início; extremos ficam fixos e o miolo é espaçado igualmente
-      const ordenados = [...alvos].sort((a, b) => a[chave] - b[chave])
+      const ordenados = [...alvos].sort((a, b) => inicioDe(a) - inicioDe(b))
       const primeiro = ordenados[0]
       const ultimo = ordenados[ordenados.length - 1]
-      const inicio = primeiro[chave] + medida(primeiro)
-      const fim = ultimo[chave]
+      const inicio = inicioDe(primeiro) + medida(primeiro)
+      const fim = inicioDe(ultimo)
       const miolo = ordenados.slice(1, -1)
       const somaMiolo = miolo.reduce((s, el) => s + medida(el), 0)
       const vao = (fim - inicio - somaMiolo) / (miolo.length + 1)
       let cursor = inicio + vao
-      const novasPosicoes = new Map<string, number>()
+      const deslocamentos = new Map<string, number>()
       for (const el of miolo) {
-        novasPosicoes.set(el.id, cursor)
+        deslocamentos.set(el.id, cursor - inicioDe(el))
         cursor += medida(el) + vao
       }
       get().aplicarAlteracao((atual) => ({
         ...atual,
         elementos: atual.elementos.map((el) =>
-          novasPosicoes.has(el.id) ? { ...el, [chave]: novasPosicoes.get(el.id)! } : el,
+          deslocamentos.has(el.id)
+            ? { ...el, [chave]: (el[chave] as number) + deslocamentos.get(el.id)! }
+            : el,
         ),
       }))
     },

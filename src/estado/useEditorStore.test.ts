@@ -93,6 +93,20 @@ const projetoDe = (id: string): Projeto => ({
   atualizadoEm: '2026-01-01T00:00:00.000Z',
 })
 
+/** Retângulo de 100×100 numa posição x, para os testes de distribuição */
+const meioRetangulo = (id: string, x: number): Elemento => ({
+  ...base(id, id),
+  x,
+  tipo: 'retangulo',
+  largura: 100,
+  altura: 100,
+  preenchimento: '#7c4dff',
+  corBorda: '#00000000',
+  espessuraBorda: 0,
+  raioCanto: 0,
+  pontas: 5,
+})
+
 /** Ambas as stores precisam vir do MESMO grafo de módulos recarregado */
 async function carregarStores() {
   vi.resetModules()
@@ -283,5 +297,64 @@ describe('useEditorStore — variações de formato', () => {
 
     expect(resultado).toEqual({ criados: 1, falharam: 0 })
     expect(projetos.getState().resumos.some((r) => r.nome.endsWith('· Story'))).toBe(true)
+  })
+})
+
+describe('useEditorStore — alinhar e distribuir', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  const posicao = (editor: Awaited<ReturnType<typeof carregarStores>>['editor'], id: string) => {
+    const el = editor.getState().projeto?.paginas[0].elementos.find((e) => e.id === id)
+    return { x: el?.x, y: el?.y }
+  }
+
+  it('alinha o texto pela caixa, contando as linhas que ele tem', async () => {
+    vi.useFakeTimers()
+    instalarLocalStorage()
+    const { editor } = await carregarStores()
+    const projeto = projetoDe('a')
+    // 3 linhas × 32px × 1.2 = 115.2 de altura; centrar em 1080 dá y=482.4.
+    // Medindo uma linha só (38.4), o resultado seria 520.8 — fora do centro.
+    const texto = projeto.paginas[0].elementos[0]
+    if (texto.tipo === 'texto') texto.texto = 'Uma\nDuas\nTrês'
+    editor.getState().abrirProjeto(projeto)
+
+    editor.getState().selecionar(['txt-1'])
+    editor.getState().alinharSelecionados('centroV')
+
+    expect(posicao(editor, 'txt-1').y).toBeCloseTo(482.4, 1)
+  })
+
+  it('encosta o fim da caixa na borda direita', async () => {
+    vi.useFakeTimers()
+    instalarLocalStorage()
+    const { editor } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+
+    editor.getState().selecionar(['ret-1'])
+    editor.getState().alinharSelecionados('direita')
+
+    // Retângulo de 100 num canvas de 1080
+    expect(posicao(editor, 'ret-1').x).toBe(980)
+  })
+
+  it('distribui usando a caixa, não a origem', async () => {
+    vi.useFakeTimers()
+    instalarLocalStorage()
+    const { editor } = await carregarStores()
+    editor.getState().abrirProjeto(projetoDe('a'))
+    // Três retângulos de 100 em x = 0, 300 e 900
+    editor.getState().atualizarElementos(['ret-1'], { x: 0, y: 0 })
+    editor.getState().adicionarElemento({ ...meioRetangulo('ret-2', 300) })
+    editor.getState().adicionarElemento({ ...meioRetangulo('ret-3', 900) })
+
+    editor.getState().selecionar(['ret-1', 'ret-2', 'ret-3'])
+    editor.getState().distribuirSelecionados('horizontal')
+
+    // Vão total 900 - 100 = 800 menos o miolo (100) dividido em 2 = 350
+    expect(posicao(editor, 'ret-2').x).toBeCloseTo(450, 6)
   })
 })

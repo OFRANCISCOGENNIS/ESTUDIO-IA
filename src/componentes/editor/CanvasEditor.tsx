@@ -21,6 +21,7 @@ import {
   criarTexto,
 } from '../../nucleo/elementos'
 import { mimeDoFormato, registrarExportador } from '../../nucleo/exportacao'
+import { caixaDe, registrarMedidor } from '../../nucleo/geometria'
 import {
   cascata,
   dimensionarParaCanvas,
@@ -34,7 +35,7 @@ import { useEditorStore } from '../../estado/useEditorStore'
 import { usePaginaAtiva } from '../../estado/usePaginaAtiva'
 import { useColabStore } from '../../estado/useColabStore'
 import { useUiStore } from '../../estado/useUiStore'
-import { Elemento, Ferramenta } from '../../tipos/projeto'
+import { Ferramenta } from '../../tipos/projeto'
 import { ElementoKonva } from './ElementoKonva'
 import { OverlayTextoEdicao } from './OverlayTextoEdicao'
 import { CamadaColab } from './CamadaColab'
@@ -67,19 +68,6 @@ interface Guia {
 
 /** Máximo de guias simultâneas (3 alvos por eixo × 2 eixos) */
 const MAX_GUIAS = 6
-
-/** Dimensões aproximadas (sem rotação) para snap e marquee */
-function dimensoes(elemento: Elemento): { largura: number; altura: number } {
-  if (elemento.tipo === 'linha' || elemento.tipo === 'caminho') {
-    const xs = elemento.pontos.filter((_, i) => i % 2 === 0)
-    const ys = elemento.pontos.filter((_, i) => i % 2 === 1)
-    return { largura: Math.max(...xs) - Math.min(...xs), altura: Math.max(...ys) - Math.min(...ys) }
-  }
-  if (elemento.tipo === 'texto') {
-    return { largura: elemento.largura, altura: elemento.tamanhoFonte * elemento.alturaLinha }
-  }
-  return { largura: elemento.largura, altura: elemento.altura }
-}
 
 export function CanvasEditor() {
   const projeto = useEditorStore((s) => s.projeto)
@@ -264,7 +252,19 @@ export function CanvasEditor() {
       stage.batchDraw()
       return url
     })
-    return () => registrarExportador(null)
+    // O Konva já quebrou o texto em linhas ao desenhar; a altura real
+    // está no nó. Sem isto, alinhar um título de 3 linhas usaria a
+    // altura de uma.
+    registrarMedidor((id) => {
+      const no = nosRef.current.get(id)
+      if (!no) return null
+      const r = no.getClientRect({ skipTransform: true })
+      return { largura: r.width, altura: r.height }
+    })
+    return () => {
+      registrarExportador(null)
+      registrarMedidor(null)
+    }
   }, [projeto])
 
   /** Cria (uma única vez) o pool de nós de guia dentro do grupo dedicado */
@@ -528,12 +528,12 @@ export function CanvasEditor() {
     if (marquee && marqueeInicio.current) {
       const dentro = pagina.elementos.filter((el) => {
         if (!el.visivel || el.bloqueado) return false
-        const { largura, altura } = dimensoes(el)
+        const c = caixaDe(el)
         return (
-          el.x < marquee.x + marquee.w &&
-          el.x + largura > marquee.x &&
-          el.y < marquee.y + marquee.h &&
-          el.y + altura > marquee.y
+          c.x < marquee.x + marquee.w &&
+          c.x + c.largura > marquee.x &&
+          c.y < marquee.y + marquee.h &&
+          c.y + c.altura > marquee.y
         )
       })
       if (dentro.length > 0) {
@@ -595,7 +595,13 @@ export function CanvasEditor() {
     const no = e.target as Konva.Node
     const el = pagina.elementos.find((it) => it.id === no.id() || nosRef.current.get(it.id) === no)
     if (!el) return
-    const { largura, altura } = dimensoes(el)
+    const caixa = caixaDe(el)
+    const { largura, altura } = caixa
+    // Distância entre a origem do elemento e o canto da caixa. É zero
+    // em formas, mas não em linhas e caminhos, cujos pontos começam
+    // longe da origem — sem isso o snap grudava a origem, não o traço.
+    const desvioX = caixa.x - el.x
+    const desvioY = caixa.y - el.y
     const limiar = LIMIAR_SNAP / zoom
     const novasGuias: Guia[] = []
 
@@ -607,21 +613,23 @@ export function CanvasEditor() {
 
     // Alvos verticais: borda esq, centro, borda dir do canvas
     const alvosX = [0, projeto.larguraCanvas / 2, projeto.larguraCanvas]
-    const bordasX = [no.x(), no.x() + largura / 2, no.x() + largura]
+    const esqX = () => no.x() + desvioX
+    const bordasX = [esqX(), esqX() + largura / 2, esqX() + largura]
     for (const alvo of alvosX) {
       for (let i = 0; i < bordasX.length; i++) {
         if (Math.abs(bordasX[i] - alvo) < limiar) {
-          no.x(alvo - (i === 0 ? 0 : i === 1 ? largura / 2 : largura))
+          no.x(alvo - desvioX - (i === 0 ? 0 : i === 1 ? largura / 2 : largura))
           novasGuias.push({ tipo: 'v', pos: alvo, ancora: no.y(), rotulo: String(Math.round(alvo)) })
         }
       }
     }
     const alvosY = [0, projeto.alturaCanvas / 2, projeto.alturaCanvas]
-    const bordasY = [no.y(), no.y() + altura / 2, no.y() + altura]
+    const topoY = () => no.y() + desvioY
+    const bordasY = [topoY(), topoY() + altura / 2, topoY() + altura]
     for (const alvo of alvosY) {
       for (let i = 0; i < bordasY.length; i++) {
         if (Math.abs(bordasY[i] - alvo) < limiar) {
-          no.y(alvo - (i === 0 ? 0 : i === 1 ? altura / 2 : altura))
+          no.y(alvo - desvioY - (i === 0 ? 0 : i === 1 ? altura / 2 : altura))
           novasGuias.push({ tipo: 'h', pos: alvo, ancora: no.x(), rotulo: String(Math.round(alvo)) })
         }
       }
@@ -884,14 +892,13 @@ export function CanvasEditor() {
               ? pagina.elementos.find((it) => it.id === idRealcado)
               : null
             if (!el || !el.visivel) return null
-            const d = dimensoes(el)
+            const c = caixaDe(el)
             return (
               <Rect
-                x={el.x}
-                y={el.y}
-                width={d.largura}
-                height={d.altura}
-                rotation={el.rotacao}
+                x={c.x}
+                y={c.y}
+                width={c.largura}
+                height={c.altura}
                 stroke="#7c4dff"
                 opacity={0.45}
                 strokeWidth={3 / zoom}
