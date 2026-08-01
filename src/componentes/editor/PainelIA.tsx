@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { useEditorStore } from '../../estado/useEditorStore'
 import { usePlanoStore } from '../../estado/usePlanoStore'
+import { useIaStore } from '../../estado/useIaStore'
 import { criarTexto } from '../../nucleo/elementos'
 import { obterAdaptadorIA } from '../../nucleo/ia/registro'
 import { OpcaoDesignIA, TipoTextoIA, TomTexto } from '../../nucleo/ia/tipos'
@@ -38,6 +39,11 @@ export function PainelIA() {
   const definirCorFundo = useEditorStore((s) => s.definirCorFundo)
   const redimensionarProjeto = useEditorStore((s) => s.redimensionarProjeto)
   const gerarVariacoesFormato = useEditorStore((s) => s.gerarVariacoesFormato)
+  const motor = useIaStore((s) => s.motor)
+  const chave = useIaStore((s) => s.chave)
+  const erro = useIaStore((s) => s.erro)
+  const definirMotor = useIaStore((s) => s.definirMotor)
+  const definirChave = useIaStore((s) => s.definirChave)
   const plano = usePlanoStore((s) => s.plano)
   const definirPlano = usePlanoStore((s) => s.definirPlano)
 
@@ -107,6 +113,68 @@ export function PainelIA() {
 
   return (
     <div className="space-y-6">
+      {/* Motor de IA */}
+      <section>
+        <h3 className={classeSecao}>⚙️ Motor</h3>
+        <div className="mb-2 grid grid-cols-2 gap-2">
+          {(['local', 'claude'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => definirMotor(m)}
+              aria-pressed={motor === m}
+              className={`rounded-xl2 border px-3 py-2 text-xs font-semibold transition ${
+                motor === m
+                  ? 'border-primaria-500 bg-primaria-500/10 text-primaria-700 dark:text-primaria-300'
+                  : 'border-superficie-200 text-superficie-700 hover:border-primaria-300 dark:border-superficie-800 dark:text-superficie-300'
+              }`}
+            >
+              {m === 'local' ? 'Local (offline)' : 'Claude'}
+            </button>
+          ))}
+        </div>
+
+        {motor === 'local' ? (
+          <p className="text-xs text-superficie-600 dark:text-superficie-400">
+            Roda no navegador. Nada é enviado para lugar nenhum.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <input
+              type="password"
+              value={chave}
+              onChange={(e) => definirChave(e.target.value)}
+              placeholder="Chave da API da Anthropic"
+              autoComplete="off"
+              spellCheck={false}
+              className="campo-texto"
+              aria-label="Chave da API da Anthropic"
+            />
+            {/* Um editor que promete não mandar nada para fora precisa
+                dizer, sem rodeios, o que muda quando isso deixa de
+                valer. */}
+            <p className="text-xs text-superficie-600 dark:text-superficie-400">
+              A chave fica guardada <strong>neste navegador</strong> e as descrições que
+              você escrever são enviadas para a API da Anthropic. Quem tiver acesso a
+              este navegador tem acesso à chave — use uma com limite de gasto. Remoção
+              de fundo e paleta continuam offline.
+            </p>
+            {chave.trim() === '' && (
+              <p className="text-xs font-medium text-superficie-700 dark:text-superficie-300">
+                Sem chave, o motor local segue respondendo.
+              </p>
+            )}
+            {erro && (
+              <p
+                role="alert"
+                className="rounded-lg border border-perigo-400 px-2 py-1.5 text-xs text-perigo-600 dark:text-perigo-400"
+              >
+                {erro} O motor local respondeu no lugar.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
+
       {/* Texto para design */}
       <section>
         <h3 className={classeSecao}>✨ Texto para design</h3>
