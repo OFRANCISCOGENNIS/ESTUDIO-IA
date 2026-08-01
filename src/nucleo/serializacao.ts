@@ -212,6 +212,13 @@ function normalizarElemento(bruto: Record<string, unknown>): Elemento | null {
         filtro: textoOu(bruto.filtro, 'nenhum'),
         intensidadeFiltro: numeroOu(bruto.intensidadeFiltro, 1),
         mascara: normalizarMascara(bruto.mascara),
+        // Projeto salvo antes do enquadramento cai em 'esticar': é o
+        // que ele desenhava, e mudar isso na leitura reformataria
+        // designs prontos sem ninguém pedir.
+        enquadramento: bruto.enquadramento === 'preencher' ? 'preencher' : 'esticar',
+        foco: normalizarFoco(bruto.foco),
+        zoom: Math.max(1, numeroOu(bruto.zoom, 1)),
+        proporcaoFonte: Math.max(0, numeroOu(bruto.proporcaoFonte, 0)),
       }
     case 'linha':
       return {
@@ -303,6 +310,13 @@ function normalizarAnimacao(valor: unknown): AnimacaoEntrada {
 const MASCARAS: FormatoMascara[] = [
   'nenhuma', 'circulo', 'arredondado', 'triangulo', 'estrela', 'coracao',
 ]
+
+/** Foco do enquadramento, preso à faixa 0..1 e centrado por padrão */
+function normalizarFoco(valor: unknown): { x: number; y: number } {
+  const v = typeof valor === 'object' && valor !== null ? (valor as Record<string, unknown>) : {}
+  const eixo = (n: unknown) => Math.min(1, Math.max(0, numeroOu(n, 0.5)))
+  return { x: eixo(v.x), y: eixo(v.y) }
+}
 
 function normalizarMascara(valor: unknown): FormatoMascara {
   return MASCARAS.includes(valor as FormatoMascara) ? (valor as FormatoMascara) : 'nenhuma'

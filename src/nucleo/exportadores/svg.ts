@@ -7,6 +7,12 @@
 // =============================================================
 
 import { Elemento, Gradiente, Pagina } from '../../tipos/projeto'
+import {
+  desenhoParaRecorte,
+  RECORTE_CHEIO,
+  recorteEhCheio,
+  recorteRelativo,
+} from '../enquadramento'
 
 function escaparTexto(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -154,7 +160,24 @@ export function paginaParaSvg(
           defs.push(`<clipPath id="${idClip}"><polygon points="${pontosEstrela(el.largura, el.altura, 5)}"/></clipPath>`)
           clip = ` clip-path="url(#${idClip})"`
         }
-        interno = `<image href="${escaparAtributo(el.url)}" width="${n(el.largura)}" height="${n(el.altura)}" preserveAspectRatio="none"${clip}/>`
+        // Preenchendo, o SVG não sabe recortar a fonte: desenhamos a
+        // foto inteira, ampliada e deslocada, e confinamos no quadro.
+        const recorte =
+          el.enquadramento === 'preencher'
+            ? recorteRelativo(el.proporcaoFonte, el, el.foco, el.zoom)
+            : RECORTE_CHEIO
+        if (recorteEhCheio(recorte)) {
+          interno = `<image href="${escaparAtributo(el.url)}" width="${n(el.largura)}" height="${n(el.altura)}" preserveAspectRatio="none"${clip}/>`
+        } else {
+          const d = desenhoParaRecorte(recorte, el)
+          if (clip === '') {
+            defs.push(`<clipPath id="${idClip}"><rect width="${n(el.largura)}" height="${n(el.altura)}"/></clipPath>`)
+            clip = ` clip-path="url(#${idClip})"`
+          }
+          interno =
+            `<g${clip}><image href="${escaparAtributo(el.url)}" x="${n(d.x)}" y="${n(d.y)}"` +
+            ` width="${n(d.largura)}" height="${n(d.altura)}" preserveAspectRatio="none"/></g>`
+        }
         break
       }
     }

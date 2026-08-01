@@ -1396,6 +1396,88 @@ export function PainelPropriedades() {
                   </div>
                 </Secao>
 
+                {/* Enquadramento: qual pedaço da foto aparece no quadro */}
+                <Secao titulo="Enquadramento">
+                  <div className="mb-2 grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        { valor: 'preencher', nome: 'Preencher', ajuda: 'Recorta para não deformar' },
+                        { valor: 'esticar', nome: 'Esticar', ajuda: 'Deforma para caber' },
+                      ] as const
+                    ).map((m) => (
+                      <button
+                        key={m.valor}
+                        type="button"
+                        title={m.ajuda}
+                        aria-pressed={elementoUnico.enquadramento === m.valor}
+                        onClick={() =>
+                          atualizarElementos([elementoUnico.id], { enquadramento: m.valor })
+                        }
+                        className={`rounded-lg border py-2 text-xs font-semibold transition ${
+                          elementoUnico.enquadramento === m.valor
+                            ? 'border-primaria-500 bg-primaria-50 text-primaria-600 dark:bg-primaria-900 dark:text-primaria-200'
+                            : 'border-superficie-200 hover:bg-superficie-100 dark:border-superficie-700 dark:hover:bg-superficie-800'
+                        }`}
+                      >
+                        {m.nome}
+                      </button>
+                    ))}
+                  </div>
+
+                  {elementoUnico.enquadramento === 'preencher' ? (
+                    <>
+                      <CampoSlider
+                        rotulo="Aproximação"
+                        valor={Math.round(elementoUnico.zoom * 100)}
+                        min={100}
+                        max={400}
+                        aoMudar={(v) =>
+                          atualizarElementos([elementoUnico.id], { zoom: v / 100 })
+                        }
+                      />
+                      <CampoSlider
+                        rotulo="Foco horizontal"
+                        valor={Math.round(elementoUnico.foco.x * 100)}
+                        min={0}
+                        max={100}
+                        aoMudar={(v) =>
+                          atualizarElementos([elementoUnico.id], {
+                            foco: { ...elementoUnico.foco, x: v / 100 },
+                          })
+                        }
+                      />
+                      <CampoSlider
+                        rotulo="Foco vertical"
+                        valor={Math.round(elementoUnico.foco.y * 100)}
+                        min={0}
+                        max={100}
+                        aoMudar={(v) =>
+                          atualizarElementos([elementoUnico.id], {
+                            foco: { ...elementoUnico.foco, y: v / 100 },
+                          })
+                        }
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          atualizarElementos([elementoUnico.id], {
+                            foco: { x: 0.5, y: 0.5 },
+                            zoom: 1,
+                          })
+                        }
+                        className="mt-1 w-full rounded-lg border border-superficie-200 py-1.5 text-xs font-medium text-superficie-700 transition hover:bg-superficie-100 dark:border-superficie-700 dark:text-superficie-200 dark:hover:bg-superficie-800"
+                      >
+                        Centralizar a foto
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-superficie-600 dark:text-superficie-400">
+                      A foto acompanha o quadro e pode achatar. Use “Preencher” para
+                      recortar em vez de deformar.
+                    </p>
+                  )}
+                </Secao>
+
                 {/* Filtros predefinidos com intensidade */}
                 <Secao titulo="Filtros">
                   <div className="grid grid-cols-3 gap-1.5">

@@ -36,6 +36,7 @@ import {
   ModoMistura,
 } from '../../tipos/projeto'
 import { useImagem } from '../../utilitarios/useImagem'
+import { RECORTE_CHEIO, recorteEhCheio, recorteRelativo } from '../../nucleo/enquadramento'
 import { movimentoReduzido } from '../../hooks/usaMovimentoReduzido'
 
 const DIMENSAO_MINIMA = 5
@@ -302,12 +303,34 @@ function ImagemKonva({
     )
   }
 
+  // O Konva recorta em pixels da fonte; a conta é feita em frações
+  // para bater com o exportador SVG, que não abre o arquivo.
+  const recorte =
+    elemento.enquadramento === 'preencher'
+      ? recorteRelativo(
+          elemento.proporcaoFonte || imagem.naturalWidth / imagem.naturalHeight,
+          elemento,
+          elemento.foco,
+          elemento.zoom,
+        )
+      : RECORTE_CHEIO
+
   const konvaImage = (
     <KonvaImage
       ref={ref}
       image={imagem}
       width={elemento.largura}
       height={elemento.altura}
+      crop={
+        recorteEhCheio(recorte)
+          ? undefined
+          : {
+              x: recorte.x * imagem.naturalWidth,
+              y: recorte.y * imagem.naturalHeight,
+              width: recorte.largura * imagem.naturalWidth,
+              height: recorte.altura * imagem.naturalHeight,
+            }
+      }
       cornerRadius={elemento.mascara === 'nenhuma' ? elemento.raioCanto : 0}
       // Atributos lidos pelos filtros customizados
       ajustesDSP={ajustes}

@@ -215,6 +215,22 @@ export interface ElementoImagem extends ElementoBase {
   intensidadeFiltro: number
   /** Máscara de recorte aplicada à imagem */
   mascara: FormatoMascara
+  /**
+   * Como a foto ocupa o quadro. 'preencher' recorta para não deformar;
+   * 'esticar' é o comportamento antigo, mantido porque projetos feitos
+   * antes disto contam com ele.
+   */
+  enquadramento: 'preencher' | 'esticar'
+  /** Ponto da foto que fica no centro do quadro (0..1 em cada eixo) */
+  foco: { x: number; y: number }
+  /** Aproximação dentro do quadro; 1 é o mínimo que ainda preenche */
+  zoom: number
+  /**
+   * Proporção (largura/altura) do arquivo original. Guardada no
+   * elemento para que o exportador SVG calcule o mesmo recorte que o
+   * canvas sem precisar abrir a imagem. 0 = desconhecida.
+   */
+  proporcaoFonte: number
 }
 
 export interface ElementoLinha extends ElementoBase {

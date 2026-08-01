@@ -129,6 +129,14 @@ export function criarImagem(
     filtro: 'nenhum',
     intensidadeFiltro: 1,
     mascara: 'nenhuma',
+    // Imagem nova já nasce preenchendo: no momento da inserção o quadro
+    // tem a proporção da foto, então nada muda na tela — a diferença
+    // aparece quando alguém arrasta uma alça lateral, e aí ela recorta
+    // em vez de achatar.
+    enquadramento: 'preencher',
+    foco: { x: 0.5, y: 0.5 },
+    zoom: 1,
+    proporcaoFonte: altura > 0 ? largura / altura : 0,
     ...extras,
   }
 }

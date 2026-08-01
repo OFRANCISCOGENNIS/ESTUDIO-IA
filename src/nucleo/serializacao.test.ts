@@ -101,6 +101,10 @@ describe('serializacao', () => {
               filtro: 'clarendon',
               intensidadeFiltro: 0.8,
               mascara: 'circulo',
+              enquadramento: 'preencher' as const,
+              foco: { x: 0.25, y: 0.75 },
+              zoom: 1.5,
+              proporcaoFonte: 1.6,
             },
             {
               id: 'lin-1',
@@ -218,5 +222,67 @@ describe('serializacao', () => {
     expect(projeto.paginas[0].elementos[0].id).toBe('r1')
     // Campos novos preenchidos na migração
     expect(projeto.paginas[0].elementos[0].mistura).toBe('normal')
+  })
+})
+
+describe('serializacao — enquadramento de imagem', () => {
+  const comImagem = (extras: Record<string, unknown>) =>
+    JSON.stringify({
+      versaoEsquema: VERSAO_ESQUEMA_ATUAL,
+      id: 'p1',
+      nome: 'P',
+      larguraCanvas: 1080,
+      alturaCanvas: 1080,
+      criadoEm: '2026-01-01T00:00:00.000Z',
+      atualizadoEm: '2026-01-01T00:00:00.000Z',
+      paginas: [
+        {
+          id: 'pagina-1',
+          nome: 'Página 1',
+          corFundo: '#fff',
+          notas: '',
+          transicao: 'fade',
+          comentarios: [],
+          elementos: [{ id: 'img', tipo: 'imagem', url: 'x', largura: 100, altura: 100, ...extras }],
+        },
+      ],
+    })
+
+  const imagemDe = (json: string) => {
+    const el = desserializarProjeto(json).paginas[0].elementos[0]
+    if (el.tipo !== 'imagem') throw new Error('esperava imagem')
+    return el
+  }
+
+  it('projeto salvo antes do enquadramento continua esticando', () => {
+    // Mudar isto na leitura reformataria designs prontos sem ninguém pedir
+    const img = imagemDe(comImagem({}))
+
+    expect(img.enquadramento).toBe('esticar')
+    expect(img.foco).toEqual({ x: 0.5, y: 0.5 })
+    expect(img.zoom).toBe(1)
+    expect(img.proporcaoFonte).toBe(0)
+  })
+
+  it('preserva o enquadramento salvo', () => {
+    const img = imagemDe(
+      comImagem({ enquadramento: 'preencher', foco: { x: 0.1, y: 0.9 }, zoom: 2.5, proporcaoFonte: 1.5 }),
+    )
+
+    expect(img.enquadramento).toBe('preencher')
+    expect(img.foco).toEqual({ x: 0.1, y: 0.9 })
+    expect(img.zoom).toBe(2.5)
+  })
+
+  it('prende foco e zoom em faixas válidas', () => {
+    const img = imagemDe(comImagem({ foco: { x: 9, y: -4 }, zoom: 0.1 }))
+
+    expect(img.foco).toEqual({ x: 1, y: 0 })
+    // Zoom abaixo de 1 deixaria buraco no quadro
+    expect(img.zoom).toBe(1)
+  })
+
+  it('ignora enquadramento desconhecido', () => {
+    expect(imagemDe(comImagem({ enquadramento: 'cobrir-tudo' })).enquadramento).toBe('esticar')
   })
 })

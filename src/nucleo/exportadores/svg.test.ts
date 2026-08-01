@@ -57,3 +57,61 @@ describe('paginaParaSvg', () => {
     expect(svg).toContain('A &amp; B &lt; C')
   })
 })
+
+describe('paginaParaSvg — enquadramento de imagem', () => {
+  const pagina = (imagem: ReturnType<typeof criarImagem>): Pagina => ({
+    id: 'p1',
+    nome: 'Página 1',
+    corFundo: '#ffffff',
+    elementos: [imagem],
+    notas: '',
+    transicao: 'fade',
+    comentarios: [],
+  })
+
+  it('esticar continua com preserveAspectRatio none', () => {
+    const img = criarImagem('data:image/png;base64,AAAA', 0, 0, 200, 200, {
+      enquadramento: 'esticar',
+    })
+
+    const svg = paginaParaSvg(pagina(img), 400, 400)
+    expect(svg).toContain('preserveAspectRatio="none"')
+    expect(svg).not.toContain('<g clip-path')
+  })
+
+  it('preenchendo, desenha a foto ampliada e confinada no quadro', () => {
+    // Foto 2:1 num quadro 1:1 → a foto inteira precisa do dobro da
+    // largura do quadro, deslocada metade para a esquerda.
+    const img = criarImagem('data:image/png;base64,AAAA', 0, 0, 200, 200, {
+      enquadramento: 'preencher',
+      proporcaoFonte: 2,
+      foco: { x: 0.5, y: 0.5 },
+      zoom: 1,
+    })
+
+    const svg = paginaParaSvg(pagina(img), 400, 400)
+
+    expect(svg).toContain('<clipPath')
+    expect(svg).toContain('width="400"') // 200 / 0.5
+    expect(svg).toContain('x="-100"') // -(0.25/0.5) * 200
+  })
+
+  it('não recorta quando a foto já tem a proporção do quadro', () => {
+    const img = criarImagem('data:image/png;base64,AAAA', 0, 0, 200, 200, {
+      enquadramento: 'preencher',
+      proporcaoFonte: 1,
+    })
+
+    // Sem sobra não há o que cortar: volta ao caminho simples
+    expect(paginaParaSvg(pagina(img), 400, 400)).toContain('preserveAspectRatio="none"')
+  })
+
+  it('sem proporção conhecida, não inventa recorte', () => {
+    const img = criarImagem('data:image/png;base64,AAAA', 0, 0, 200, 100, {
+      enquadramento: 'preencher',
+      proporcaoFonte: 0,
+    })
+
+    expect(paginaParaSvg(pagina(img), 400, 400)).toContain('preserveAspectRatio="none"')
+  })
+})
